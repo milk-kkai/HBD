@@ -9,7 +9,7 @@ export const CONFIG = {
   // Kod do finału: cyfry zbierane z dni 3–6 składają się w "2910".
   // Każda skrzynka daje rzeczy z listy `items` (ubrania albo dekoracje do pokoju).
   days: [
-    { n: 1, date: '2026-10-23', dow: 'PT', game: 'catch', title: 'Łap tort!', goal: 20, reward: { items: ['kokardka', 'ramka'] } },
+    { n: 1, date: '2026-10-23', dow: 'PT', game: 'catch', title: 'Łap tort!', goal: 40, reward: { items: ['kokardka', 'ramka'] } },
     { n: 2, date: '2026-10-24', dow: 'SB', game: 'dreamhouse', title: 'Dreamhouse', reward: { items: ['okulary', 'plakat', 'zajaczek'] } },
     { n: 3, date: '2026-10-25', dow: 'ND', game: 'karne', title: 'Kucykowe karne', reward: { digit: '2', items: ['buty', 'mis'] } },
     { n: 4, date: '2026-10-26', dow: 'PN', game: 'poker', title: 'Poker', reward: { digit: '9', items: ['zeton', 'lampka'] } },

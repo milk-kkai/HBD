@@ -12,12 +12,12 @@ const PH = SPR.miniPati.h + SPR.miniSlipper.h;
 const TYPES = [
   { id: 'cake', spr: SPR.cake, w: 0.5, pts: 1 },
   { id: 'gift', spr: SPR.gift, w: 0.14, pts: 2 },
-  { id: 'heart', spr: SPR.heart, w: 0.06, pts: 1 },
+  { id: 'heart', spr: SPR.heart, w: 0.05, pts: 1 },
   { id: 'cloud', spr: SPR.cloud, w: 0.3, pts: 0 },
 ];
 
 function pickType(score) {
-  const cloudBoost = Math.min(0.12, score * 0.003);
+  const cloudBoost = Math.min(0.2, score * 0.004);
   let r = Math.random() * (1 + cloudBoost);
   for (const t of TYPES) {
     r -= t.w + (t.id === 'cloud' ? cloudBoost : 0);
@@ -172,8 +172,8 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     s.spawn -= dt;
     if (s.spawn <= 0) {
       const t = pickType(s.score);
-      s.items.push({ t, x: 2 + Math.random() * (W - t.spr.w - 4), y: -t.spr.h, vy: 34 + Math.min(70, s.score * 1.6) + Math.random() * 14, wob: Math.random() * 6 });
-      s.spawn = Math.max(0.38, 1.05 - s.score * 0.022) * (0.75 + Math.random() * 0.5);
+      s.items.push({ t, x: 2 + Math.random() * (W - t.spr.w - 4), y: -t.spr.h, vy: 36 + Math.min(80, s.score * 1.5) + Math.random() * 14, wob: Math.random() * 6 });
+      s.spawn = Math.max(0.34, 1.0 - s.score * 0.016) * (0.75 + Math.random() * 0.5);
     }
 
     const py = H - FLOOR - PH;
