@@ -5,8 +5,12 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { cleanProgress, mergeProgress } from '../src/merge.js';
 import { normPassword } from '../src/password.js';
 
-const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel przy podłączaniu bazy może dodać własny przedrostek (KV_, STORAGE_, …),
+// więc szukamy po końcówce nazwy.
+const envBy = (re) => Object.entries(process.env).find(([k, v]) => re.test(k) && v)?.[1];
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || envBy(/(REST_API|REDIS_REST)_URL$/);
+const TOKEN =
+  process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || envBy(/^(?!.*READ_ONLY).*(REST_API|REDIS_REST)_TOKEN$/);
 const PASSWORD = process.env.PATI_PASSWORD;
 const KEY = 'hbd-pati:progress';
 
