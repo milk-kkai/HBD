@@ -36,6 +36,10 @@ export const CONFIG = {
     ],
   },
 
+  // Hasło ustawia się w Vercelu (zmienna PATI_PASSWORD), nie tutaj. Tu tylko opcjonalna
+  // podpowiedź na ekranie logowania, np. 'imię naszego kota'.
+  passwordHint: '',
+
   // rzeczy, które Pati ma od początku (bez wygrywania)
   starterItems: ['gdzies'],
 

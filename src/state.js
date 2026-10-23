@@ -1,7 +1,8 @@
 import { CONFIG, ITEMS } from './config.js';
 import { realDayNumber } from './time.js';
 
-const KEY = 'hbd-pati-v1';
+const REAL_KEY = 'hbd-pati-v1';
+const TEST_KEY = 'hbd-pati-dev-v1';
 const DEV_KEY = 'hbd-dev';
 const DEV_DAY_KEY = 'hbd-dev-day';
 
@@ -19,9 +20,46 @@ function write(key, value) {
   } catch {}
 }
 
-const fresh = () => ({ days: {}, items: [], room: { placed: {}, lamp: 0, lampSeen: 1, seen: [], garland: 0 } });
+// Tryb testowy (?dev=milk) ma osobny zapis, który nigdy nie trafia do chmury,
+// więc testy nie mieszają się z postępem Pati.
+(function initDev() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('dev') === CONFIG.devKey) {
+    write(DEV_KEY, true);
+    // to przeglądarka do testów: dotychczasowy zapis przenosimy do testowego
+    try {
+      if (localStorage.getItem(REAL_KEY) != null) {
+        if (localStorage.getItem(TEST_KEY) == null) localStorage.setItem(TEST_KEY, localStorage.getItem(REAL_KEY));
+        localStorage.removeItem(REAL_KEY);
+      }
+    } catch {}
+  }
+  if (params.get('dev') === 'off') {
+    write(DEV_KEY, false);
+    write(DEV_DAY_KEY, null);
+  }
+})();
+export const isDev = () => read(DEV_KEY, false) === true;
+const KEY = isDev() ? TEST_KEY : REAL_KEY;
+
+const fresh = () => ({ days: {}, items: [], room: { placed: {}, lamp: 0, lampSeen: 1, seen: [], garland: 0, updatedAt: 0 }, updatedAt: 0 });
 let progress = read(KEY, fresh());
 progress.room = { ...fresh().room, ...(progress.room || {}) };
+
+// zapis lokalny + powiadomienie synchronizacji (ustawiane w sync.js)
+let saveHook = null;
+export const setSaveHook = (fn) => (saveHook = fn);
+function save() {
+  progress.updatedAt = Date.now();
+  write(KEY, progress);
+  saveHook?.();
+}
+export const getProgress = () => JSON.parse(JSON.stringify(progress));
+// podmiana całego postępu (np. połączonego z chmurą) bez ponownej wysyłki
+export function replaceProgress(p) {
+  progress = { ...fresh(), ...p, room: { ...fresh().room, ...(p.room || {}) } };
+  write(KEY, progress);
+}
 
 export function dayState(n) {
   return progress.days[n] || { won: false, best: 0, chestOpened: false };
@@ -29,7 +67,7 @@ export function dayState(n) {
 
 function patchDay(n, patch) {
   progress.days[n] = { ...dayState(n), ...patch };
-  write(KEY, progress);
+  save();
 }
 
 export function recordScore(n, score) {
@@ -61,7 +99,10 @@ export const ownedDecor = () => ownedItems().filter((id) => ITEMS[id].kind === '
 export const winsCount = () => CONFIG.days.filter((d) => dayState(d.n).won).length;
 
 // --- pokój ---
-const saveRoom = () => write(KEY, progress);
+const saveRoom = () => {
+  progress.room.updatedAt = Date.now();
+  save();
+};
 // tylko miejsca, które nadal istnieją w configu (stare zapisy z usuniętych miejsc są pomijane)
 const slotIds = () => new Set(CONFIG.room.slots.map((s) => s.id));
 export function placed() {
@@ -120,19 +161,10 @@ export function codeSlots() {
 
 export function resetProgress() {
   progress = fresh();
-  write(KEY, progress);
+  save();
 }
 
 // --- tryb testowy ---
-export function initDev() {
-  const params = new URLSearchParams(location.search);
-  if (params.get('dev') === CONFIG.devKey) write(DEV_KEY, true);
-  if (params.get('dev') === 'off') {
-    write(DEV_KEY, false);
-    write(DEV_DAY_KEY, null);
-  }
-}
-export const isDev = () => read(DEV_KEY, false) === true;
 export const setDevDay = (n) => write(DEV_DAY_KEY, n);
 
 export function currentDay() {

@@ -13,6 +13,24 @@ npm run dev
 
 Import repo w Vercelu. Framework wykryje się sam (Vite), build `npm run build`, output `dist`.
 
+## Zapis w chmurze i hasło
+
+Postęp Pati (wygrane dni, skrzynki, ułożenie pokoju) zapisuje się w przeglądarce, a po
+skonfigurowaniu także w chmurze, więc działa na każdym urządzeniu i w każdej przeglądarce.
+
+1. Vercel → projekt → **Storage** → **Create Database** → **Upstash for Redis** (plan Free) → połącz z projektem.
+   Vercel sam doda zmienne `KV_REST_API_URL` i `KV_REST_API_TOKEN`.
+2. Vercel → projekt → **Settings → Environment Variables** → dodaj `PATI_PASSWORD` z hasłem dla Pati.
+3. **Deployments** → przy ostatnim wdrożeniu `⋯` → **Redeploy**.
+
+Od tego momentu przy pierwszym wejściu na nowym urządzeniu pojawia się ekran z hasłem (raz,
+potem jest zapamiętane). Wielkość liter, spacje i polskie znaki w haśle nie mają znaczenia.
+Bez tej konfiguracji strona działa jak wcześniej, tylko lokalnie. Podpowiedź na ekranie
+logowania: `passwordHint` w `src/config.js`.
+
+Postęp z dwóch urządzeń się łączy: wygrane i skrzynki tylko przybywają, a pokój bierze
+najnowsze ułożenie. Tryb `?dev=milk` ma osobny zapis i nigdy nie wysyła niczego do chmury.
+
 ## Gdzie co zmieniać
 
 - `src/config.js`: imię, data, plan dni (gra, tytuł, cel, nagroda), przedmioty ze skrzynek.
@@ -40,7 +58,7 @@ Import repo w Vercelu. Framework wykryje się sam (Vite), build `npm run build`,
 ## Tryb testowy
 
 Otwórz stronę z `?dev=milk`. Na dole pojawi się czerwony pasek: `−`/`+` zmienia symulowany dzień, `wygraj` zalicza bieżący dzień (żeby przetestować skrzynkę), `reset` czyści postęp, `off` wyłącza tryb.
-Postęp zapisuje się w przeglądarce (localStorage), więc test u siebie nie psuje niczego u Pati.
+Tryb testowy ma własny zapis w przeglądarce i nie synchronizuje się z chmurą, więc testy nie psują niczego u Pati. Pierwsze wejście z `?dev=milk` przenosi dotychczasowy lokalny zapis tej przeglądarki do testowego.
 
 ## Zasady dni
 

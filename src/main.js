@@ -8,6 +8,7 @@ import { decorCanvas } from './decor.js';
 import { blip, jingle, isMuted, toggleMute, playMusic } from './audio.js';
 import * as st from './state.js';
 import { mountCatch } from './games/catch.js';
+import { startSync, login } from './sync.js';
 
 const GAMES = { catch: mountCatch };
 
@@ -23,7 +24,6 @@ let tickTimer = 0;
 let decor = null; // tryb urządzania: { selected: itemId | null }
 
 applyPalette(pal);
-st.initDev();
 
 // Pokój jest montowany raz i przenoszony między ekranami, żeby nie migał.
 const roomHost = document.createElement('div');
@@ -225,6 +225,7 @@ function fillTray(bottom) {
           <div class="tray-title">URZĄDZAJ POKÓJ</div>
           <div class="tray-hint">${hint}</div>
         </div>
+        ${sel && placedIds.includes(sel) ? '<button class="btn ghost small" data-act="decor-remove">ZDEJMIJ</button>' : ''}
         <button class="btn small" data-act="decor-done">GOTOWE</button>
       </div>
       <div class="tray-items">
@@ -234,7 +235,6 @@ function fillTray(bottom) {
           return `<button class="${cls}" data-item="${id}"><span class="ti-img"></span><span class="ti-name">${has ? ITEMS[id].name : '???'}</span></button>`;
         }).join('')}
       </div>
-      ${sel && placedIds.includes(sel) ? '<button class="btn ghost small" data-act="decor-remove">ZDEJMIJ ZE ŚCIANY / PÓŁKI</button>' : ''}
     </div>`;
   bottom.querySelectorAll('.tray-item').forEach((b) => {
     const id = b.dataset.item;
@@ -404,6 +404,55 @@ function photoModal(id) {
   });
 }
 
+// ---------- logowanie ----------
+
+function showLogin() {
+  if (frame.querySelector('.login')) return;
+  const box = el(`
+    <div class="login">
+      <form class="login-box" autocomplete="on">
+        <div class="login-face"></div>
+        <div class="login-title">HEJ ${CONFIG.name.toUpperCase()}!</div>
+        <div class="login-sub">Wpisz hasło, żeby wejść do swojego pokoju</div>
+        <input type="text" name="username" value="${CONFIG.name}" autocomplete="username" hidden>
+        <input class="login-input" name="password" type="password" autocomplete="current-password"
+          autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="40" placeholder="hasło">
+        ${CONFIG.passwordHint ? `<div class="login-hint">podpowiedź: ${CONFIG.passwordHint}</div>` : ''}
+        <button class="btn play" type="submit">WEJDŹ</button>
+        <div class="login-err"></div>
+      </form>
+    </div>`);
+  const form = box.querySelector('form');
+  const input = box.querySelector('.login-input');
+  const err = box.querySelector('.login-err');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!input.value.trim()) return input.focus();
+    const btn = form.querySelector('button');
+    btn.disabled = true;
+    err.textContent = '';
+    const ok = await login(input.value);
+    btn.disabled = false;
+    if (ok) {
+      jingle([523, 659, 784, 1047], 0.08);
+      box.classList.add('out');
+      setTimeout(() => {
+        box.remove();
+        home();
+      }, 350);
+    } else {
+      err.textContent = 'To nie to hasło 🙈';
+      blip(200, 0.15, 'square', 0.05, -60);
+      form.classList.remove('shake');
+      void form.offsetWidth;
+      form.classList.add('shake');
+      input.select();
+    }
+  });
+  frame.append(box);
+  setTimeout(() => input.focus(), 60);
+}
+
 function toast(msg) {
   frame.querySelector('.toast.global')?.remove();
   const t = el(`<div class="toast global">${msg}</div>`);
@@ -440,3 +489,8 @@ function devPanel() {
 
 document.addEventListener('visibilitychange', () => !document.hidden && !unmountGame && home());
 home();
+// postęp z chmury: po zmianie odśwież ekran, chyba że Pati jest w grze albo ma otwarte okienko
+startSync({
+  refresh: () => !unmountGame && !frame.querySelector('.modal, .login') && home(),
+  needLogin: showLogin,
+});
