@@ -1,6 +1,6 @@
 // Dywan z licznikiem, rysowany oczko po oczku jak dzianina.
 // Tło (ramki, napis, kwiatki) rysuje się raz, cyfry i frędzle co klatkę.
-// Cyfry zmieniają się jak w liczniku z bębenkami: stara zjeżdża w dół, nowa wjeżdża z góry.
+// Cyfry zmieniają się spokojnie: stara delikatnie zjeżdża i znika, nowa wsuwa się na jej miejsce.
 
 const C = 4; // jedno oczko = 4×4 px canvasu
 const GW = 128;
@@ -9,13 +9,13 @@ const BODY0 = 5;
 const BODY1 = 122;
 
 const COL = {
-  cream: ['#f7e7d4', '#f3dfca', '#fbeee0'],
-  maroon: '#6e1f40',
-  pink: '#e0708f',
-  heart: '#d84a63',
-  heartHi: '#f59aab',
-  petal: '#ea7fa2',
-  center: '#f2bd4e',
+  cream: ['#efdcc6', '#ead5bd', '#f3e3cf'],
+  maroon: '#86405c',
+  pink: '#d9909f',
+  heart: '#cf6a7c',
+  heartHi: '#eaa3ae',
+  petal: '#de95a8',
+  center: '#e7bf6a',
   leaf: '#7fae62',
   fringe: '#f1dcc0',
   fringeDark: '#cdb08f',
@@ -180,15 +180,10 @@ function drawStatic() {
 
 const DIGIT_Y = 16; // górny rząd cyfr (w oczkach)
 const DIGIT_H = 14 * C; // wysokość cyfry w px canvasu
-const ROLL = 0.5; // czas przewinięcia cyfry w sekundach
-const TRAVEL = DIGIT_H + 3 * C;
+const ROLL = 0.38; // czas zmiany cyfry w sekundach
+const TRAVEL = 2 * C; // tylko lekkie przesunięcie, bez przewijania całej cyfry
 
-// lekkie przestrzelenie i powrót, jak sprężynujący bębenek
-function easeOutBack(x) {
-  const c1 = 1.3;
-  const c3 = c1 + 1;
-  return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2;
-}
+const easeInOut = (x) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
 
 function digit(g, ch, xCell, yPx, alpha) {
   if (alpha <= 0) return;
@@ -254,26 +249,11 @@ export function createRug(canvas) {
           digit(g, st.cur, x0, top, 1);
           continue;
         }
-        // okienko cyfry: to, co wyjeżdża poza nie, jest ucięte
+        // przenikanie: stara cyfra lekko opada i blednie, nowa schodzi z góry i się pojawia
         g.save();
-        g.beginPath();
-        g.rect(x0 * C - 2, top - 2 * C, 10 * C + 4, DIGIT_H + 4 * C);
-        g.clip();
-        const p = since < 0 ? 0 : easeOutBack(since / ROLL);
-        const fade = since < 0 ? 0 : Math.min(1, since / (ROLL * 0.7));
-        if (st.prev) digit(g, st.prev, x0, top + TRAVEL * p, 1 - fade);
-        if (since >= 0) digit(g, st.cur, x0, top - TRAVEL + TRAVEL * p, Math.min(1, 0.3 + fade));
-        // miękkie brzegi okienka, jakby cyfry obracały się na bębenku
-        for (const [y0, y1] of [
-          [top - 2 * C, top + C],
-          [top + DIGIT_H + 2 * C, top + DIGIT_H - C],
-        ]) {
-          const gr = g.createLinearGradient(0, y0, 0, y1);
-          gr.addColorStop(0, 'rgba(247,231,212,0.95)');
-          gr.addColorStop(1, 'rgba(247,231,212,0)');
-          g.fillStyle = gr;
-          g.fillRect(x0 * C - 2, Math.min(y0, y1), 10 * C + 4, Math.abs(y1 - y0));
-        }
+        const p = since < 0 ? 0 : easeInOut(since / ROLL);
+        if (st.prev) digit(g, st.prev, x0, top + TRAVEL * p, 1 - p);
+        if (since >= 0) digit(g, st.cur, x0, top - TRAVEL * (1 - p), p);
         g.restore();
       }
     });

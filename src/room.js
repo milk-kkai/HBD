@@ -17,7 +17,7 @@ const BEACONS = [
   [393, 243],
   [633, 357],
 ];
-const RUG = { x: 110, y: 972, w: 722 };
+const RUG = { x: 150, y: 982, w: 642 };
 const CURTAIN_BOX = { x: 160, y: 190, w: 660, h: 410 };
 
 const LINES = [

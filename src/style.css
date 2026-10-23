@@ -238,7 +238,8 @@ canvas.spr {
   image-rendering: pixelated;
   transform: perspective(95cqh) rotateX(33deg);
   transform-origin: 50% 100%;
-  filter: drop-shadow(0 0.6cqw 0.7cqw rgba(60, 25, 15, 0.45));
+  /* wieczorne światło pokoju: lekko przygaszony i cieplejszy */
+  filter: brightness(0.9) sepia(0.12) drop-shadow(0 0.6cqw 0.7cqw rgba(60, 25, 15, 0.4));
   pointer-events: none;
 }
 .curtains {
