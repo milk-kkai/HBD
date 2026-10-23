@@ -412,7 +412,7 @@ function showLogin() {
     <div class="login">
       <form class="login-box" autocomplete="on">
         <div class="login-face"></div>
-        <div class="login-title">HEJ ${CONFIG.name.toUpperCase()}!</div>
+        <div class="login-title">beforek się zaczyna..</div>
         <div class="login-sub">Wpisz hasło, żeby wejść do swojego pokoju</div>
         <input type="text" name="username" value="${CONFIG.name}" autocomplete="username" hidden>
         <input class="login-input" name="password" type="password" autocomplete="current-password"
