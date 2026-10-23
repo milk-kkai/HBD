@@ -19,6 +19,17 @@ const ACCENTS = {
   green: '#63a65a',
   purple: '#9d72d0',
   sky: '#8fc6ee',
+  patiSkin: '#efbd99',
+  patiSkinShade: '#d89f7c',
+  patiHair: '#6a3d24',
+  patiHairHi: '#93603a',
+  glasses: '#9a5324',
+  top: '#e58ca4',
+  topShade: '#c56a86',
+  jeans: '#5f8bc6',
+  jeansShade: '#45699f',
+  slipper: '#5aa2ff',
+  slipperHi: '#b3d6ff',
 };
 
 export function paletteFor() {

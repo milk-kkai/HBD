@@ -497,6 +497,21 @@ canvas.spr {
   opacity: 0.45;
   background: var(--light);
 }
+.hud-r {
+  display: flex;
+  gap: 0.45em;
+}
+.music-btn {
+  font-size: 1.15em;
+  color: var(--ink);
+}
+.music-btn.off {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.hud-col.right {
+  align-items: flex-end;
+}
 .hud-col {
   display: flex;
   flex-direction: column;

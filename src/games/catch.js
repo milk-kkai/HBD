@@ -1,10 +1,12 @@
 import { SPR, drawSprite, drawNumber, spriteCanvas } from '../sprites.js';
-import { blip, jingle } from '../audio.js';
+import { blip, jingle, playMusic, isMuted, toggleMute } from '../audio.js';
 import { hasItem, dayState } from '../state.js';
 
 const W = 96;
 const FLOOR = 14;
 const MAX_LIVES = 3;
+const PW = SPR.miniPati.w;
+const PH = SPR.miniPati.h + SPR.miniSlipper.h;
 
 const TYPES = [
   { id: 'cake', spr: SPR.cake, w: 0.5, pts: 1 },
@@ -29,7 +31,10 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
       <div class="hud">
         <div class="hud-l"><span class="ico"></span><span class="score">0</span></div>
         <div class="hud-c hearts"></div>
-        <button class="sq-btn" data-act="pause" aria-label="Pauza">II</button>
+        <div class="hud-r">
+          <button class="sq-btn music-btn ${isMuted() ? 'off' : ''}" data-act="music" aria-label="Muzyka">♪</button>
+          <button class="sq-btn" data-act="pause" aria-label="Pauza">II</button>
+        </div>
       </div>
       <div class="goal"><div class="goal-fill"></div><span class="goal-txt">cel: ${day.goal}</span></div>
       <div class="stage"><canvas class="world"></canvas><div class="overlay"></div></div>
@@ -62,8 +67,8 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
 
   function reset() {
     s = {
-      x: W / 2 - 6, score: 0, lives: MAX_LIVES, items: [], parts: [], pops: [],
-      spawn: 0.6, t: 0, shake: 0, won: false, hurt: 0, face: 1,
+      x: W / 2 - PW / 2, score: 0, lives: MAX_LIVES, items: [], parts: [], pops: [],
+      spawn: 0.6, t: 0, shake: 0, won: false, hurt: 0, moving: false, blink: 2,
     };
     renderHud();
   }
@@ -106,6 +111,7 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
 
   function start() {
     reset();
+    playMusic('game');
     mode = 'play';
     showOverlay('');
     blip(520, 0.06);
@@ -152,11 +158,13 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     const speed = 70;
     let move = dir;
     if (pointerX != null) {
-      const target = pointerX - 6;
+      const target = pointerX - PW / 2;
       move = Math.abs(target - s.x) < 1.5 ? 0 : Math.sign(target - s.x);
     }
-    if (move) s.face = move;
-    s.x = Math.max(0, Math.min(W - 12, s.x + move * speed * dt));
+    s.moving = !!move;
+    s.x = Math.max(0, Math.min(W - PW, s.x + move * speed * dt));
+    s.blink -= dt;
+    if (s.blink < -0.12) s.blink = 2 + Math.random() * 3;
 
     s.spawn -= dt;
     if (s.spawn <= 0) {
@@ -165,8 +173,8 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
       s.spawn = Math.max(0.38, 1.05 - s.score * 0.022) * (0.75 + Math.random() * 0.5);
     }
 
-    const py = H - FLOOR - SPR.pati.h;
-    const basket = { x: s.x - 1, y: py + 9, w: 14, h: 4 };
+    const py = H - FLOOR - PH;
+    const basket = { x: s.x + 2, y: py + 14, w: PW - 4, h: 4 };
     for (const it of s.items) {
       it.y += it.vy * dt;
       const cx = it.x + Math.sin(s.t * 3 + it.wob) * (it.t.id === 'cloud' ? 6 : 0) * dt;
@@ -269,18 +277,28 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     if (s.shake > 0) g.translate(Math.round((Math.random() - 0.5) * 4), Math.round((Math.random() - 0.5) * 3));
     drawBackground();
     for (const it of s.items) drawSprite(g, it.t.spr, it.x, it.y, pal);
-    const py = H - FLOOR - SPR.pati.h;
-    const bob = mode === 'play' && (dir || pointerX != null) ? Math.round(Math.sin(s.t * 18)) : 0;
-    if (!(s.hurt > 0 && Math.floor(s.hurt * 20) % 2)) {
-      drawSprite(g, SPR.pati, s.x, py + bob, pal, 1, s.face < 0);
-      if (wearsBow) drawSprite(g, SPR.patiBow, s.x, py + bob - 1, pal, 1, s.face < 0);
-    }
+    const py = H - FLOOR - PH;
+    if (!(s.hurt > 0 && Math.floor(s.hurt * 20) % 2)) drawMiniPati(py);
     for (const p of s.parts) {
       g.fillStyle = p.c;
       g.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
     }
     for (const p of s.pops) drawNumber(g, p.txt, p.x, p.y, pal.ink);
     g.restore();
+  }
+
+  // mini Pati: przy chodzeniu przebiera kapciami i lekko podskakuje, co jakiś czas mruga
+  function drawMiniPati(py) {
+    const walking = mode === 'play' && s.moving;
+    const step = walking ? Math.floor(s.t * 9) % 2 : -1;
+    const bob = walking && step === 0 ? -1 : 0;
+    const x = Math.round(s.x);
+    const sy = py + SPR.miniPati.h;
+    drawSprite(g, SPR.miniSlipper, x + 1, sy - (step === 0 ? 1 : 0), pal);
+    drawSprite(g, SPR.miniSlipper, x + 9, sy - (step === 1 ? 1 : 0), pal);
+    drawSprite(g, SPR.miniPati, x, py + bob, pal);
+    if (s.blink < 0) drawSprite(g, SPR.miniBlink, x + 6, py + bob + 6, pal);
+    if (wearsBow) drawSprite(g, SPR.miniBow, x + 11, py + bob - 2, pal);
   }
 
   function loop(now) {
@@ -302,6 +320,11 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
       showOverlay('');
     } else if (act === 'exit') onExit('menu');
     else if (act === 'chest') onExit('chest');
+    else if (act === 'music') {
+      const off = toggleMute();
+      root.querySelector('.music-btn').classList.toggle('off', off);
+      if (!off) playMusic('game');
+    }
   };
   root.addEventListener('click', onClick);
 

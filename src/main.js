@@ -5,7 +5,7 @@ import { paletteFor, applyPalette } from './palette.js';
 import { SPR, spriteCanvas, ITEM_SPRITES } from './sprites.js';
 import { mountRoom } from './room.js';
 import { decorCanvas } from './decor.js';
-import { blip, jingle, isMuted, toggleMute } from './audio.js';
+import { blip, jingle, isMuted, toggleMute, playMusic } from './audio.js';
 import * as st from './state.js';
 import { mountCatch } from './games/catch.js';
 
@@ -69,7 +69,10 @@ function home() {
             <div class="day-lbl">${after ? 'PO URODZINACH' : isBirthday ? 'URODZINY!' : `DZIEŃ ${Math.max(today, 1)}/${TOTAL}`}</div>
             <div class="dots">${CONFIG.days.map((d) => `<i class="${d.n < today || after ? 'past' : d.n === today ? 'now' : ''}"></i>`).join('')}</div>
           </div>
-          <button class="sq-btn panel-sm" data-act="profile" aria-label="Profil"><span class="face-ico"></span></button>
+          <div class="hud-col right">
+            <button class="sq-btn panel-sm" data-act="profile" aria-label="Profil"><span class="face-ico"></span></button>
+            <button class="sq-btn panel-sm music-btn ${isMuted() ? 'off' : ''}" data-act="music" aria-label="Muzyka">♪</button>
+          </div>
         </div>
         <div class="bottom"></div>
       </div>
@@ -88,6 +91,7 @@ function home() {
   swap(screen);
   room.refresh();
   room.setEditing(decor);
+  playMusic(isBirthday ? 'hbd' : 'menu');
   tick();
   devPanel();
 }
@@ -140,6 +144,10 @@ function onHomeClick(e) {
   if (act === 'profile') return profile();
   if (act === 'play') return play(Number(t.dataset.n));
   if (act === 'decor') return toggleDecor();
+  if (act === 'music') {
+    t.classList.toggle('off', toggleMute());
+    return;
+  }
   if (act === 'decor-done') return toggleDecor(false);
   if (act === 'decor-remove') {
     st.removeItem(decor.selected);
