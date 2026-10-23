@@ -131,7 +131,7 @@ export function mountRoom(host, { pal, onPhoto }) {
   function garlandSvg(slot) {
     const x0 = slot.x - slot.w / 2;
     const x1 = slot.x + slot.w / 2;
-    const sag = 34;
+    const sag = slot.sag ?? 34;
     const n = 18;
     const colors = [pal.pink, pal.gold, pal.teal, pal.purple];
     let bulbs = '';

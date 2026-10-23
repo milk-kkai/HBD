@@ -556,11 +556,37 @@ canvas.spr {
   margin: 0 auto;
   image-rendering: pixelated;
 }
+.photo-big {
+  max-height: 64cqh;
+  overflow: hidden;
+  border: 0.15em solid var(--ink);
+  border-radius: 0.3em;
+  background: var(--ink);
+}
 .photo-big img {
   display: block;
   width: 100%;
-  border-radius: 0.3em;
-  border: 0.15em solid var(--ink);
+  height: auto;
+  max-height: 63cqh;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+.photo-big.zoom {
+  overflow: auto;
+  touch-action: pan-x pan-y;
+}
+.photo-big.zoom img {
+  width: 250%;
+  max-height: none;
+  max-width: none;
+  cursor: zoom-out;
+}
+.photo-title {
+  font-size: 1.1em;
+  letter-spacing: 0.04em;
+}
+.photo-modal .modal-box {
+  width: 92%;
 }
 
 .home-ui {

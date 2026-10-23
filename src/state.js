@@ -50,7 +50,7 @@ export function openChest(n) {
 // Posiadane rzeczy wynikają z otwartych skrzynek, więc zmiana nagród w configu
 // działa też dla skrzynek otwartych wcześniej.
 export function ownedItems() {
-  const out = [];
+  const out = [...(CONFIG.starterItems || [])].filter((id) => ITEMS[id]);
   for (const d of CONFIG.days)
     if (dayState(d.n).chestOpened) for (const id of rewardItems(d)) if (ITEMS[id] && !out.includes(id)) out.push(id);
   for (const id of progress.items) if (ITEMS[id] && !out.includes(id)) out.push(id);
@@ -62,22 +62,25 @@ export const winsCount = () => CONFIG.days.filter((d) => dayState(d.n).won).leng
 
 // --- pokój ---
 const saveRoom = () => write(KEY, progress);
-export const placed = () => ({ ...progress.room.placed });
-export const slotOf = (itemId) => Object.keys(progress.room.placed).find((s) => progress.room.placed[s] === itemId);
+// tylko miejsca, które nadal istnieją w configu (stare zapisy z usuniętych miejsc są pomijane)
+const slotIds = () => new Set(CONFIG.room.slots.map((s) => s.id));
+export function placed() {
+  const ids = slotIds();
+  return Object.fromEntries(Object.entries(progress.room.placed).filter(([slot, item]) => ids.has(slot) && ITEMS[item]));
+}
+export const slotOf = (itemId) => Object.keys(placed()).find((s) => progress.room.placed[s] === itemId);
 
 // Wstawia rzecz w miejsce. Jeśli stała gdzie indziej, przenosi ją; jeśli miejsce było zajęte,
 // poprzednia rzecz wraca do ekwipunku.
 export function placeItem(slotId, itemId) {
-  const old = slotOf(itemId);
-  if (old) delete progress.room.placed[old];
+  for (const [s, id] of Object.entries(progress.room.placed)) if (id === itemId) delete progress.room.placed[s];
   const displaced = progress.room.placed[slotId];
   progress.room.placed[slotId] = itemId;
   saveRoom();
   return displaced && displaced !== itemId ? displaced : null;
 }
 export function removeItem(itemId) {
-  const s = slotOf(itemId);
-  if (s) delete progress.room.placed[s];
+  for (const [s, id] of Object.entries(progress.room.placed)) if (id === itemId) delete progress.room.placed[s];
   saveRoom();
 }
 export const unseenDecor = () => ownedDecor().filter((id) => !progress.room.seen.includes(id));

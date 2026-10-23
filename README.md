@@ -20,7 +20,9 @@ Import repo w Vercelu. Framework wykryje się sam (Vite), build `npm run build`,
 - `src/room.js`: żywy pokój na ekranie menu (Pati oddycha i mruga, firanki falują od wiatru, świeczka się pali, miasto miga, licznik na dywanie).
 - `CONFIG.room.slots` w `src/config.js`: miejsca w pokoju, w które Pati może wstawiać rzeczy (`wall`, `surface`, `bed`, `floor`, `garland`).
 - `ITEMS` w `src/config.js`: rzeczy ze skrzynek. `kind: 'dekoracja'` trafia do pokoju; `fits` mówi, gdzie pasuje, `action` co robi po kliknięciu (`photo`, `plush`, `lamp`, `garland`), `photo` to ścieżka do prawdziwego zdjęcia, `img` to własna grafika zamiast zastępczego sprite'a.
-- `reward.items` przy każdym dniu: co wypada ze skrzynki.
+- `reward.items` przy każdym dniu: co wypada ze skrzynki. `starterItems`: rzeczy, które Pati ma od początku.
+- Ważne obrazki (`hires: true` + `photo`) wiszą w ramce w pełnej rozdzielczości, a po kliknięciu otwierają się z przybliżaniem. Zdjęcia leżą w `public/photos/`.
+- Na oknach nic nie stoi ani nie wisi: miejsca są tylko na ścianie, szafce, łóżku, podłodze i pod sufitem.
 - `src/rug.js`: dywan z licznikiem, rysowany oczko po oczku.
 - `src/palette.js`: kolory interfejsu.
 - `src/sprites.js`: pixelowe sprite'y jako mapy znaków.
@@ -29,7 +31,8 @@ Import repo w Vercelu. Framework wykryje się sam (Vite), build `npm run build`,
 
 Źródła są w `art-src/`, gotowe pliki w `public/art/`. Skrypty (Python + Pillow + NumPy):
 
-- `art-src/clean_room.py room.webp public/art/room.webp`: usuwa zamazanie z szafki nocnej.
+- `art-src/clean_room.py room-day1.webp public/art/room.webp`: usuwa zamazanie z szafki nocnej oraz półkę z roślinką z lewej ściany (miejsce na obrazki).
+- `art-src/prep_gdzies.py`: prostuje zdjęcie rysunku „Gdzieś to widziałam? 100/10” (perspektywa) i usuwa przycisk z ekranu.
 - `art-src/cut_pati.py pati-sheet.webp public/art`: wycina Pati z białego tła i robi klatkę mrugnięcia.
 - `art-src/prep_rug_city.py`: zapisuje pozycje świateł miasta do `src/city.json`.
 - `art-src/cut_curtains.py`: wycina zasłony (ręczny obrys), żeby mogły falować od wiatru.

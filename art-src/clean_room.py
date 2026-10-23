@@ -56,5 +56,17 @@ for y, x in zip(ys, xs):
 for y in range(709, 720):
     out_im[y, 388:438] = out_im[y, 384]
 
-Image.fromarray(out_im.astype(np.uint8)).save(out, quality=92)
+# lewa ściana: zdjęta półka z książkami i zwisająca roślinka, żeby było miejsce na obrazki.
+# Wypełnienie kolumnami (płynnie od koloru nad półką do koloru pod nią) zachowuje pionowe
+# krawędzie: narożnik pokoju i plamę słońca.
+SY0, SY1, SX1 = 326, 552, 183
+rng = np.random.default_rng(3)
+for x in range(0, SX1):
+    top = out_im[SY0 - 6:SY0, x].mean(axis=0)
+    bot = out_im[SY1:SY1 + 6, x].mean(axis=0)
+    for y in range(SY0, SY1):
+        k = (y - SY0) / (SY1 - SY0)
+        out_im[y, x] = top * (1 - k) + bot * k + rng.normal(0, 1.2, 3)
+
+Image.fromarray(np.clip(out_im, 0, 255).astype(np.uint8)).save(out, quality=92)
 print('masked px:', mask.sum())

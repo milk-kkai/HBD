@@ -24,18 +24,20 @@ export const CONFIG = {
   room: {
     background: '/art/room.webp',
     slots: [
-      { id: 'sciana', kind: 'wall', x: 124, y: 292, w: 58 },
-      { id: 'szyba-l', kind: 'wall', x: 334, y: 492, w: 54 },
-      { id: 'szyba-p', kind: 'wall', x: 650, y: 492, w: 54 },
-      { id: 'karnisz', kind: 'garland', x: 490, y: 200, w: 640 },
-      { id: 'parapet', kind: 'surface', x: 352, y: 628, w: 46 },
-      { id: 'szafka', kind: 'surface', x: 389, y: 706, w: 50 },
+      // nic nie stoi ani nie wisi na oknie: obrazki tylko na ścianie obok zasłony
+      { id: 'sciana', kind: 'wall', x: 144, y: 262, w: 56 },
+      { id: 'sciana-2', kind: 'wall', x: 144, y: 452, w: 56 },
+      { id: 'sufit', kind: 'garland', x: 482, y: 154, w: 660, sag: 14 },
+      { id: 'szafka', kind: 'surface', x: 389, y: 706, w: 56 },
       { id: 'lozko-1', kind: 'bed', x: 228, y: 716, w: 74 },
       { id: 'lozko-2', kind: 'bed', x: 132, y: 726, w: 74 },
       { id: 'podloga-l', kind: 'floor', x: 384, y: 990, w: 96 },
       { id: 'podloga-p', kind: 'floor', x: 690, y: 992, w: 96 },
     ],
   },
+
+  // rzeczy, które Pati ma od początku (bez wygrywania)
+  starterItems: ['gdzies'],
 
   // ?dev=milk w adresie włącza panel testowy (zmiana dnia, reset postępu).
   devKey: 'milk',
@@ -54,6 +56,16 @@ export const ITEMS = {
   klucz: { name: 'Stary klucz', kind: 'przedmiot', desc: '???' },
   kurtka: { name: 'Kurtka gwiazdy', kind: 'ubranie', desc: '???' },
 
+  gdzies: {
+    name: 'Gdzieś to widziałam? 100/10',
+    kind: 'dekoracja',
+    fits: ['wall', 'surface', 'floor'],
+    action: 'photo',
+    photo: '/photos/gdzies-to-widzialam.webp',
+    photoAspect: 1233 / 888,
+    hires: true,
+    desc: '',
+  },
   ramka: { name: 'Ramka ze zdjęciem', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Tu będzie nasze zdjęcie ♥' },
   plakat: { name: 'Plakat', kind: 'dekoracja', fits: ['wall'], action: 'photo', desc: 'Plakat, który wisi u Ciebie' },
   polaroid: { name: 'Polaroid', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Zdjęcie z tamtego wieczoru' },

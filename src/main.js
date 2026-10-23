@@ -49,7 +49,6 @@ function home() {
   }
   today = st.currentDay();
   const isBirthday = today === TOTAL;
-  const after = today > TOTAL;
   const chests = st.unopenedChests().length;
   const unseen = st.unseenDecor().length;
 
@@ -64,10 +63,6 @@ function home() {
             <button class="sq-btn panel-sm decor-btn ${decor ? 'on' : ''}" data-act="decor" aria-label="Urządzaj pokój">
               <span class="ico mis-ico"></span>${unseen ? `<b class="badge">${unseen}</b>` : ''}
             </button>
-          </div>
-          <div class="day-pill panel-sm">
-            <div class="day-lbl">${after ? 'PO URODZINACH' : isBirthday ? 'URODZINY!' : `DZIEŃ ${Math.max(today, 1)}/${TOTAL}`}</div>
-            <div class="dots">${CONFIG.days.map((d) => `<i class="${d.n < today || after ? 'past' : d.n === today ? 'now' : ''}"></i>`).join('')}</div>
           </div>
           <div class="hud-col right">
             <button class="sq-btn panel-sm" data-act="profile" aria-label="Profil"><span class="face-ico"></span></button>
@@ -386,11 +381,27 @@ function openChestModal(n) {
 function photoModal(id) {
   const it = ITEMS[id];
   const m = modal(`
-    <div class="modal-title">${it.name.toUpperCase()}</div>
-    <div class="photo-big">${it.photo ? `<img src="${it.photo}" alt="">` : ''}</div>
-    <div class="small">${it.desc}</div>
-    <button class="btn small" data-act="close">ZAMKNIJ</button>`);
-  if (!it.photo) m.querySelector('.photo-big').append(decorCanvas(id, pal));
+    <div class="modal-title photo-title">${it.name}</div>
+    <div class="photo-big">${it.photo ? `<img src="${it.photo}" alt="${it.name}">` : ''}</div>
+    ${it.photo ? '<div class="small">stuknij, żeby przybliżyć</div>' : ''}
+    ${it.desc ? `<div class="small">${it.desc}</div>` : ''}
+    <button class="btn small" data-act="close">ZAMKNIJ</button>`, 'photo-modal');
+  const box = m.querySelector('.photo-big');
+  if (!it.photo) box.append(decorCanvas(id, pal));
+  // przybliżenie: stuknięcie przełącza 2,5×, przybliżony obraz można przesuwać palcem
+  box.addEventListener('click', (e) => {
+    if (!it.photo) return;
+    const zoomed = box.classList.toggle('zoom');
+    if (zoomed) {
+      const r = box.getBoundingClientRect();
+      const fx = (e.clientX - r.left) / r.width;
+      const fy = (e.clientY - r.top) / r.height;
+      requestAnimationFrame(() => {
+        box.scrollLeft = fx * box.scrollWidth - r.width / 2;
+        box.scrollTop = fy * box.scrollHeight - r.height / 2;
+      });
+    }
+  });
 }
 
 function toast(msg) {

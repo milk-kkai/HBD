@@ -148,12 +148,59 @@ function drawFrame(g, id, pal, photo) {
   }
 }
 
+// Ramka w wysokiej rozdzielczości dla ważnych obrazków: rysunek pokazany dokładnie, bez pixelizacji.
+const HI = { w: 320, border: 18, mat: 14 };
+function hiresSize(item) {
+  const inner = HI.w - 2 * (HI.border + HI.mat);
+  return { w: HI.w, h: Math.round(inner * item.photoAspect) + 2 * (HI.border + HI.mat), inner };
+}
+
+function drawHires(cv, item, img) {
+  const { w, h, inner } = hiresSize(item);
+  cv.width = w;
+  cv.height = h;
+  const g = cv.getContext('2d');
+  const b = HI.border;
+  // drewniana rama: ciemny obrys, słoje w paskach, złota listwa od środka
+  g.fillStyle = '#4a2416';
+  g.fillRect(0, 0, w, h);
+  const woods = ['#a8683c', '#b5764a', '#9c5e36', '#b06f42'];
+  for (let i = 3; i < b; i += 3) {
+    g.fillStyle = woods[(i / 3) % woods.length];
+    g.fillRect(i, i, w - 2 * i, h - 2 * i);
+  }
+  g.fillStyle = '#e8b54a';
+  g.fillRect(b - 4, b - 4, w - 2 * (b - 4), h - 2 * (b - 4));
+  g.fillStyle = '#fff1c9';
+  g.fillRect(b - 4, b - 4, w - 2 * (b - 4), 1);
+  // passe-partout z delikatnym cieniem do środka
+  g.fillStyle = '#fbf3e6';
+  g.fillRect(b, b, w - 2 * b, h - 2 * b);
+  g.fillStyle = 'rgba(120,80,50,0.18)';
+  g.fillRect(b, b, w - 2 * b, 3);
+  g.fillRect(b, b, 3, h - 2 * b);
+  const px = b + HI.mat;
+  if (img) {
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, px, px, inner, h - 2 * px);
+  }
+  g.strokeStyle = 'rgba(80,50,30,0.35)';
+  g.lineWidth = 1;
+  g.strokeRect(px - 0.5, px - 0.5, inner + 1, h - 2 * px + 1);
+}
+
 // Zwraca canvas z dekoracją (wyświetlany w CSS z image-rendering: pixelated).
 export function decorCanvas(id, pal) {
   const item = ITEMS[id];
   const cv = document.createElement('canvas');
   cv.className = 'decor-img';
   const g = cv.getContext('2d');
+  if (item.hires) {
+    cv.classList.add('smooth');
+    drawHires(cv, item, null);
+    loadImg(item.photo).then((im) => im && drawHires(cv, item, im));
+    return cv;
+  }
   if (item.img) {
     loadImg(item.img).then((im) => {
       if (!im) return;
@@ -193,6 +240,10 @@ export function decorCanvas(id, pal) {
 
 // proporcje (wysokość / szerokość) do rozplanowania w pokoju
 export function decorAspect(id) {
+  if (ITEMS[id].hires) {
+    const { w, h } = hiresSize(ITEMS[id]);
+    return h / w;
+  }
   if (FRAMES[id]) return FRAMES[id].h / FRAMES[id].w;
   if (SPRITES[id]) return SPRITES[id].h / SPRITES[id].w;
   return ITEMS[id].aspect ?? 1;
