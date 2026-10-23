@@ -83,7 +83,7 @@ const TRACKS = {
   // skoczny kawałek do gier
   game: {
     bpm: 132,
-    vol: 0.5,
+    vol: 0.34,
     voices: [
       {
         wave: 'pulse25',
@@ -109,8 +109,8 @@ const TRACKS = {
   // przytulne lo-fi do pokoju
   menu: {
     bpm: 84,
-    vol: 0.42,
-    lowpass: 2600,
+    vol: 0.15,
+    lowpass: 2000,
     voices: [
       {
         wave: 'triangle',
@@ -130,7 +130,7 @@ const TRACKS = {
   // urodziny: Happy Birthday w wersji 8-bit (3/4, z przedtaktem)
   hbd: {
     bpm: 112,
-    vol: 0.5,
+    vol: 0.26,
     voices: [
       {
         wave: 'pulse25',
