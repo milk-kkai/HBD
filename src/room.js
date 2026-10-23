@@ -29,6 +29,10 @@ const LINES = [
   'okno otwarte, ale ciepło',
   'urządzimy coś?',
   '29.10 🎂',
+  'w piłkarzyki i tak cię ogram ⚽',
+  'all in? all in. 🃏',
+  'może jakaś muzyczka? 🎶',
+  'tu by pasował jeszcze jeden pluszak',
 ];
 
 const pct = (v, total) => `${(v / total) * 100}%`;
