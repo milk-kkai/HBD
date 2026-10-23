@@ -17,7 +17,7 @@ const BEACONS = [
   [393, 243],
   [633, 357],
 ];
-const RUG = { x: 110, y: 1030, w: 722 };
+const RUG = { x: 110, y: 972, w: 722 };
 const CURTAIN_BOX = { x: 160, y: 190, w: 660, h: 410 };
 
 const LINES = [
@@ -394,7 +394,6 @@ export function mountRoom(host, { pal, onPhoto }) {
   }
 
   let last = t0;
-  let frameNo = 0;
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (!room.isConnected) return; // pokój schowany na czas gry
@@ -406,7 +405,7 @@ export function mountRoom(host, { pal, onPhoto }) {
     drawCity(t);
     drawParticles(t, dt, w);
     drawCurtains(t, w);
-    if (frameNo++ % 3 === 0) rug.draw(t, w);
+    rug.draw(t, w);
     drawPati(t);
   }
   raf = requestAnimationFrame(frame);

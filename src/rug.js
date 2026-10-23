@@ -1,5 +1,6 @@
 // Dywan z licznikiem, rysowany oczko po oczku jak dzianina.
 // Tło (ramki, napis, kwiatki) rysuje się raz, cyfry i frędzle co klatkę.
+// Cyfry zmieniają się jak w liczniku z bębenkami: stara zjeżdża w dół, nowa wjeżdża z góry.
 
 const C = 4; // jedno oczko = 4×4 px canvasu
 const GW = 128;
@@ -64,9 +65,8 @@ function shade(hex, f) {
 }
 
 // oczko dzianiny: jasne „V” na górze, ciemniejszy dół
-function stitch(g, x, y, color) {
-  const px = x * C;
-  const py = y * C;
+const stitch = (g, x, y, color) => stitchPx(g, x * C, y * C, color);
+function stitchPx(g, px, py, color) {
   g.fillStyle = color;
   g.fillRect(px, py, C, C);
   g.fillStyle = shade(color, 1.08);
@@ -178,22 +178,53 @@ function drawStatic() {
   return cv;
 }
 
+const DIGIT_Y = 16; // górny rząd cyfr (w oczkach)
+const DIGIT_H = 14 * C; // wysokość cyfry w px canvasu
+const ROLL = 0.5; // czas przewinięcia cyfry w sekundach
+const TRAVEL = DIGIT_H + 3 * C;
+
+// lekkie przestrzelenie i powrót, jak sprężynujący bębenek
+function easeOutBack(x) {
+  const c1 = 1.3;
+  const c3 = c1 + 1;
+  return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2;
+}
+
+function digit(g, ch, xCell, yPx, alpha) {
+  if (alpha <= 0) return;
+  g.globalAlpha = alpha;
+  F5[ch].forEach((row, r) => {
+    for (let c = 0; c < 5; c++) {
+      if (row[c] !== '1') continue;
+      for (let sy = 0; sy < 2; sy++)
+        for (let sx = 0; sx < 2; sx++) stitchPx(g, (xCell + c * 2 + sx) * C, Math.round(yPx + (r * 2 + sy) * C), COL.maroon);
+    }
+  });
+  g.globalAlpha = 1;
+}
+
 export function createRug(canvas) {
   canvas.width = GW * C;
   canvas.height = GH * C;
   const g = canvas.getContext('2d');
   const base = drawStatic();
-  const vals = { dni: '00', godz: '00', min: '00', sek: '00' };
-  const changedAt = {};
+  // każda cyfra osobno: aktualna, poprzednia i kiedy zaczęła się zmieniać
+  const digits = Object.fromEntries(KEYS.map((k) => [k, [{}, {}]]));
+  let first = true;
 
   function set(next, now) {
-    for (const k of KEYS) {
+    KEYS.forEach((k, i) => {
       const v = String(next[k]).padStart(2, '0');
-      if (v !== vals[k]) {
-        for (let i = 0; i < 2; i++) if (v[i] !== vals[k][i]) changedAt[`${k}${i}`] = now;
-        vals[k] = v;
+      for (let d = 0; d < 2; d++) {
+        const st = digits[k][d];
+        if (st.cur === v[d]) continue;
+        // przy wejściu na stronę cyfry wtaczają się po kolei, od dni do sekund
+        st.at = first ? now + 0.25 + i * 0.12 + d * 0.06 : now;
+        st.prev = first ? null : st.cur;
+        st.cur = v[d];
       }
-    }
+    });
+    first = false;
   }
 
   function draw(t, wind) {
@@ -211,23 +242,39 @@ export function createRug(canvas) {
       g.fillRect((BODY1 + 1) * C + len - 3, yy + 1, 3, 1);
     }
     g.drawImage(base, 0, 0);
-    // cyfry: nowa cyfra „dowyszywa się” oczko po oczku
+    const top = DIGIT_Y * C;
     KEYS.forEach((k, i) => {
       const bx = BOXES[i];
       for (let d = 0; d < 2; d++) {
-        const rows = F5[vals[k][d]];
-        const since = t - (changedAt[`${k}${d}`] ?? -10);
-        const total = rows.join('').split('1').length - 1;
-        const shown = since < 0.35 ? Math.ceil((since / 0.35) * total) : total;
-        let n = 0;
+        const st = digits[k][d];
+        if (!st.cur) continue;
         const x0 = bx + 2 + d * 11;
-        rows.forEach((row, r) => {
-          for (let c = 0; c < 5; c++) {
-            if (row[c] !== '1') continue;
-            if (n++ >= shown) return;
-            for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) stitch(g, x0 + c * 2 + sx, 16 + r * 2 + sy, COL.maroon);
-          }
-        });
+        const since = t - st.at;
+        if (since >= ROLL) {
+          digit(g, st.cur, x0, top, 1);
+          continue;
+        }
+        // okienko cyfry: to, co wyjeżdża poza nie, jest ucięte
+        g.save();
+        g.beginPath();
+        g.rect(x0 * C - 2, top - 2 * C, 10 * C + 4, DIGIT_H + 4 * C);
+        g.clip();
+        const p = since < 0 ? 0 : easeOutBack(since / ROLL);
+        const fade = since < 0 ? 0 : Math.min(1, since / (ROLL * 0.7));
+        if (st.prev) digit(g, st.prev, x0, top + TRAVEL * p, 1 - fade);
+        if (since >= 0) digit(g, st.cur, x0, top - TRAVEL + TRAVEL * p, Math.min(1, 0.3 + fade));
+        // miękkie brzegi okienka, jakby cyfry obracały się na bębenku
+        for (const [y0, y1] of [
+          [top - 2 * C, top + C],
+          [top + DIGIT_H + 2 * C, top + DIGIT_H - C],
+        ]) {
+          const gr = g.createLinearGradient(0, y0, 0, y1);
+          gr.addColorStop(0, 'rgba(247,231,212,0.95)');
+          gr.addColorStop(1, 'rgba(247,231,212,0)');
+          g.fillStyle = gr;
+          g.fillRect(x0 * C - 2, Math.min(y0, y1), 10 * C + 4, Math.abs(y1 - y0));
+        }
+        g.restore();
       }
     });
   }
