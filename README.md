@@ -17,8 +17,18 @@ Import repo w Vercelu. Framework wykryje się sam (Vite), build `npm run build`,
 
 - `src/config.js`: imię, data, plan dni (gra, tytuł, cel, nagroda), przedmioty ze skrzynek.
 - `src/games/`: każda gra to osobny plik `mountX(root, { day, pal, onExit, onWin, onScore })`.
-- `src/palette.js`: kolory. Dzień 1 jest monochromatyczny, a z każdym dniem dochodzą barwy.
+- `src/room.js`: żywy pokój na ekranie menu (Pati oddycha i mruga, firanki falują od wiatru, świeczka się pali, miasto miga, licznik na dywanie).
+- `CONFIG.room` w `src/config.js`: tło pokoju i od którego dnia pojawia się dana rzecz (`candle`, `pinkLight`, …).
+- `src/palette.js`: kolory interfejsu.
 - `src/sprites.js`: pixelowe sprite'y jako mapy znaków.
+
+## Grafiki
+
+Źródła są w `art-src/`, gotowe pliki w `public/art/`. Skrypty (Python + Pillow + NumPy):
+
+- `art-src/clean_room.py room.webp public/art/room.webp`: usuwa zamazanie z szafki nocnej.
+- `art-src/cut_pati.py pati-sheet.webp public/art`: wycina Pati z białego tła i robi klatkę mrugnięcia.
+- `art-src/prep_rug_city.py`: wycina dywan, usuwa z niego cyfry i zapisuje pozycje świateł miasta do `src/city.json`.
 
 ## Tryb testowy
 

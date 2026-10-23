@@ -136,83 +136,192 @@ canvas.spr {
   height: 1.8em;
 }
 
-/* ---------- Ekran główny ---------- */
+/* ---------- Ekran główny: pokój ---------- */
 .home {
-  gap: 0.9em;
+  padding: 0;
+  background: var(--outside);
 }
-.scene {
+.room-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.room {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  aspect-ratio: 941 / 1672;
+  transform: translateX(-50%);
+  transition: opacity 0.5s;
+}
+.room.loading {
+  opacity: 0;
+}
+.room > * {
+  position: absolute;
+}
+.room-bg,
+.room-fx {
+  inset: 0;
   width: 100%;
-  margin-bottom: 0.4em;
+  height: 100%;
+  display: block;
+  pointer-events: none;
 }
-.scene .spr {
-  width: 100%;
-  height: auto;
+.room-fx {
+  image-rendering: pixelated;
 }
-.hero {
-  flex: 1;
-  justify-content: center;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3em;
+.glow {
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
-.hero-sub {
-  letter-spacing: 0.25em;
-  font-size: 0.9em;
-  color: var(--dark);
+.glow-ceiling {
+  background: radial-gradient(closest-side, rgba(255, 214, 150, 0.5), rgba(255, 200, 140, 0.16) 55%, transparent);
+  animation: lamp 5s ease-in-out infinite;
 }
-.hero-name {
-  font-size: 3.6em;
-  line-height: 1;
-  letter-spacing: 0.06em;
-  text-shadow: 0.08em 0.08em 0 var(--pink);
+.glow-desk {
+  background: radial-gradient(closest-side, rgba(255, 205, 150, 0.45), transparent);
+  animation: lamp 3.3s ease-in-out infinite;
 }
-.hero-date {
-  font-size: 1.6em;
+.tint {
+  inset: 0;
+  pointer-events: none;
 }
-.cd {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.45em;
-  margin-top: 0.6em;
-  width: 100%;
+.tint-warm {
+  background: radial-gradient(130% 80% at 50% 42%, transparent 55%, rgba(45, 15, 30, 0.38));
 }
-.cd-box {
+.tint-pink {
+  background: radial-gradient(130% 80% at 50% 42%, rgba(255, 120, 180, 0.12) 40%, rgba(90, 10, 60, 0.4));
+  mix-blend-mode: hard-light;
+}
+.pati {
+  aspect-ratio: 334 / 930;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  filter: saturate(1.04) brightness(0.97) drop-shadow(0 0 2px rgba(255, 190, 130, 0.35));
+}
+.pati-shadow {
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(40, 15, 10, 0.5), transparent);
+  pointer-events: none;
+}
+.bubble {
+  transform: translate(-50%, -100%) scale(0.6);
+  opacity: 0;
+  white-space: nowrap;
   background: var(--paper);
+  color: var(--ink);
   border: 0.14em solid var(--ink);
-  border-radius: 0.25em;
-  box-shadow: 0 0.22em 0 var(--ink);
-  padding: 0.3em 0 0.25em;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-radius: 0.6em;
+  padding: 0.3em 0.7em;
+  font-size: 0.9em;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 3;
 }
-.cd-box b {
-  font-size: 2em;
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -0.55em;
+  width: 0.7em;
+  height: 0.7em;
+  background: var(--paper);
+  border-right: 0.14em solid var(--ink);
+  border-bottom: 0.14em solid var(--ink);
+  transform: translateX(-50%) rotate(45deg);
+}
+.bubble.show {
+  opacity: 1;
+  transform: translate(-50%, -100%) scale(1);
+}
+.rug {
+  container-type: inline-size;
+  filter: drop-shadow(0 0.5cqw 0.8cqw rgba(60, 25, 15, 0.4));
+}
+.rug img {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+}
+.rug-num {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 7.4cqw;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
+  color: #5c1b3a;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0.05em 0 rgba(255, 240, 230, 0.55), 0 -0.03em 0 rgba(120, 30, 70, 0.5);
 }
-.cd-box span {
-  font-size: 0.65em;
-  color: var(--dark);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+.rug-num.tick {
+  animation: tick 0.3s steps(3);
 }
 
+.home-ui {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.8em 0.8em 1em;
+  pointer-events: none;
+}
+.home-ui .hud {
+  align-items: flex-start;
+}
+.home-ui .hud > *,
+.home-ui .bottom > * {
+  pointer-events: auto;
+}
+.panel-sm {
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  border: 0.14em solid var(--ink);
+  border-radius: 0.5em;
+  box-shadow: 0 0.2em 0 var(--ink);
+}
+.chip {
+  padding: 0.3em 0.65em 0.3em 0.45em;
+  color: var(--ink);
+}
+.day-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25em;
+  padding: 0.35em 0.8em 0.4em;
+  margin-top: 2.7em;
+}
+.home-ui .sq-btn {
+  border-style: solid;
+  overflow: hidden;
+  width: 2.7em;
+  height: 2.7em;
+}
+.face-ico {
+  width: 100%;
+  height: 100%;
+  background: url('/art/pati.webp') no-repeat 68% 2% / 128% auto;
+}
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+}
 .today-card {
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 93%, transparent);
   border: 0.15em solid var(--ink);
-  border-radius: 0.35em;
-  box-shadow: 0 0.3em 0 var(--ink);
-  padding: 0.8em;
+  border-radius: 0.55em;
+  box-shadow: 0 0.25em 0 var(--ink);
+  padding: 0.55em 0.7em;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.6em 0.8em;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5em 0.7em;
   align-items: center;
 }
 .tc-icon .spr {
-  height: 3.4em;
+  height: 2.6em;
 }
 .tc-tag {
   font-size: 0.75em;
@@ -221,7 +330,7 @@ canvas.spr {
   letter-spacing: 0.1em;
 }
 .tc-title {
-  font-size: 1.6em;
+  font-size: 1.35em;
   line-height: 1.1;
 }
 .tc-meta {
@@ -229,7 +338,16 @@ canvas.spr {
   color: var(--dark);
 }
 .today-card .btn {
+  width: auto;
+}
+.today-card .btn.catchup {
   grid-column: 1 / -1;
+}
+.btn.play {
+  background: var(--pink);
+  color: var(--ink);
+  box-shadow: 0 0.25em 0 var(--ink);
+  padding: 0.55em 0.9em;
 }
 
 .week {
@@ -243,11 +361,11 @@ canvas.spr {
   align-items: center;
   gap: 0.25em;
   padding: 0.35em 0 0.3em;
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
   border: 0.12em solid var(--ink);
-  border-radius: 0.25em;
+  border-radius: 0.35em;
   box-shadow: 0 0.18em 0 var(--ink);
-  font-size: 0.7em;
+  font-size: 0.66em;
 }
 .tile .spr {
   height: 1.5em;
@@ -273,12 +391,6 @@ canvas.spr {
 .tile.final {
   border-style: double;
   border-width: 0.25em;
-}
-.foot {
-  text-align: center;
-  font-size: 0.75em;
-  color: var(--dark);
-  letter-spacing: 0.05em;
 }
 
 /* ---------- Przyciski ---------- */
@@ -401,7 +513,7 @@ canvas.world {
   font-size: 3.2em;
   line-height: 1;
 }
-.small {
+.small:not(.btn) {
   font-size: 0.8em;
   color: var(--dark);
 }
@@ -462,8 +574,9 @@ canvas.world {
   border-radius: 0.3em;
   padding: 0.5em 0.7em;
 }
-.prof-avatar .spr {
-  height: 5.5em;
+.prof-avatar img {
+  display: block;
+  height: 7em;
 }
 .prof-stats {
   text-align: left;
@@ -630,6 +743,13 @@ canvas.world {
   padding: 0 5px;
 }
 
+@keyframes lamp {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
+}
+@keyframes tick {
+  50% { transform: translate(-50%, -58%) scale(1.06); }
+}
 @keyframes bob {
   50% {
     transform: translateY(-0.12em);

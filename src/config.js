@@ -18,6 +18,12 @@ export const CONFIG = {
     { n: 7, date: '2026-10-29', dow: 'CZ', game: 'finale', title: 'FINAŁ', reward: {} },
   ],
 
+  // Pokój na ekranie menu: od którego dnia pojawia się dana rzecz.
+  room: {
+    background: '/art/room.webp',
+    layers: { candle: 1, pinkLight: 3 },
+  },
+
   // ?dev=milk w adresie włącza panel testowy (zmiana dnia, reset postępu).
   devKey: 'milk',
 };

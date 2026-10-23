@@ -2,7 +2,8 @@ import './style.css';
 import { CONFIG, ITEMS } from './config.js';
 import { zoneMidnight, splitMs, humanIn } from './time.js';
 import { paletteFor, applyPalette } from './palette.js';
-import { SPR, spriteCanvas, drawSprite, ITEM_SPRITES } from './sprites.js';
+import { SPR, spriteCanvas, ITEM_SPRITES } from './sprites.js';
+import { mountRoom } from './room.js';
 import { blip, jingle, isMuted, toggleMute } from './audio.js';
 import * as st from './state.js';
 import { mountCatch } from './games/catch.js';
@@ -17,14 +18,21 @@ let today = 0;
 let pal = null;
 let unmountGame = null;
 let tickTimer = 0;
-let sceneTimer = 0;
+let unmountRoom = null;
 
 st.initDev();
 
 function refreshDay() {
   today = st.currentDay();
-  pal = paletteFor(Math.min(Math.max(today, 1), TOTAL));
+  pal = paletteFor();
   applyPalette(pal);
+}
+
+function stopRoom() {
+  if (unmountRoom) {
+    unmountRoom();
+    unmountRoom = null;
+  }
 }
 
 const el = (html) => {
@@ -50,38 +58,32 @@ function home() {
 
   const screen = el(`
     <div class="screen home">
-      <div class="hud">
-        <button class="hud-l chip" data-act="profile" aria-label="Skrzynki">
-          <span class="ico chest-ico"></span><span>${chests}</span>
-        </button>
-        <div class="hud-c">
-          <div class="day-lbl">${after ? 'PO URODZINACH' : `DZIEŃ ${Math.max(today, 1)}/${TOTAL}`}</div>
-          <div class="dots">${CONFIG.days.map((d) => `<i class="${d.n < today || after ? 'past' : d.n === today ? 'now' : ''}"></i>`).join('')}</div>
+      <div class="room-host"></div>
+      <div class="home-ui">
+        <div class="hud">
+          <button class="chip panel-sm" data-act="profile" aria-label="Skrzynki">
+            <span class="ico chest-ico"></span><span>${chests}</span>
+          </button>
+          <div class="day-pill panel-sm">
+            <div class="day-lbl">${after ? 'PO URODZINACH' : isBirthday ? 'URODZINY!' : `DZIEŃ ${Math.max(today, 1)}/${TOTAL}`}</div>
+            <div class="dots">${CONFIG.days.map((d) => `<i class="${d.n < today || after ? 'past' : d.n === today ? 'now' : ''}"></i>`).join('')}</div>
+          </div>
+          <button class="sq-btn panel-sm" data-act="profile" aria-label="Profil"><span class="face-ico"></span></button>
         </div>
-        <button class="sq-btn" data-act="profile" aria-label="Profil"><span class="ico face-ico"></span></button>
+        <div class="bottom">
+          <div class="today-card"></div>
+          <div class="week">
+            ${CONFIG.days.map((d) => tileHtml(d)).join('')}
+          </div>
+        </div>
       </div>
-
-      <div class="hero">
-        <div class="scene"></div>
-        ${isBirthday || after
-          ? `<div class="hero-sub">WSZYSTKIEGO NAJLEPSZEGO</div><div class="hero-name">${CONFIG.name.toUpperCase()}</div><div class="hero-date">${CONFIG.birthdayLabel}</div>`
-          : `<div class="hero-sub">DO URODZIN</div><div class="hero-name">${CONFIG.name.toUpperCase()}</div>
-             <div class="cd">${['dni', 'godz', 'min', 'sek'].map((l) => `<div class="cd-box"><b data-cd="${l}">00</b><span>${l}</span></div>`).join('')}</div>`}
-      </div>
-
-      <div class="today-card"></div>
-
-      <div class="week">
-        ${CONFIG.days.map((d) => tileHtml(d)).join('')}
-      </div>
-      <div class="foot">${after ? 'wszystkie gry odblokowane ♥' : 'nowa gra codziennie o północy'}</div>
     </div>`);
 
   screen.querySelector('.chest-ico').append(spriteCanvas(SPR.chest, pal));
-  screen.querySelector('.face-ico').append(spriteCanvas(SPR.pati, pal, st.hasItem('kokardka') ? [SPR.patiBow] : []));
   if (chests) screen.querySelector('.chip').classList.add('pulse');
   fillTodayCard(screen.querySelector('.today-card'), focus);
-  mountScene(screen.querySelector('.scene'));
+  stopRoom();
+  unmountRoom = mountRoom(screen.querySelector('.room-host'), { day: Math.max(today, 1) });
   screen.querySelectorAll('.tile').forEach((t) => {
     const d = CONFIG.days[Number(t.dataset.n) - 1];
     const a = st.access(d.n, today);
@@ -96,46 +98,6 @@ function home() {
   swap(screen);
   tick();
   devPanel();
-}
-
-// Mała scenka nad licznikiem: girlanda, Pati i tort z migającymi świeczkami.
-function mountScene(box) {
-  clearInterval(sceneTimer);
-  const W = 96;
-  const H = 34;
-  const cv = document.createElement('canvas');
-  cv.width = W;
-  cv.height = H;
-  cv.className = 'spr';
-  box.append(cv);
-  const g = cv.getContext('2d');
-  const bow = st.hasItem('kokardka');
-  const flags = [pal.pink, pal.gold, pal.teal, pal.purple];
-  let frame = 0;
-  const draw = () => {
-    g.clearRect(0, 0, W, H);
-    g.fillStyle = pal.dark;
-    for (let x = 0; x < W; x++) g.fillRect(x, 2 + Math.round(Math.sin((x / W) * Math.PI) * 3), 1, 1);
-    for (let i = 0; i < 8; i++) {
-      const fx = 3 + i * 12;
-      const fy = 3 + Math.round(Math.sin(((fx + 3) / W) * Math.PI) * 3);
-      g.fillStyle = flags[i % 4];
-      for (let r = 0; r < 5; r++) g.fillRect(fx + Math.floor(r / 2), fy + r, 6 - Math.floor(r / 2) * 2, 1);
-    }
-    const floor = H - 4;
-    g.fillStyle = pal.mid;
-    g.fillRect(10, floor, W - 20, 1);
-    const bob = frame % 2;
-    drawSprite(g, SPR.pati, 26, floor - SPR.pati.h - bob, pal);
-    if (bow) drawSprite(g, SPR.patiBow, 26, floor - SPR.pati.h - bob - 1, pal);
-    drawSprite(g, SPR.bigCake, 50, floor - SPR.bigCake.h, pal);
-    g.fillStyle = frame % 2 ? pal.white : pal.gold;
-    for (const cx of [54, 58, 62]) g.fillRect(cx, floor - SPR.bigCake.h - 1, 1, 1);
-    drawSprite(g, SPR.gift, 70, floor - SPR.gift.h, pal);
-    frame++;
-  };
-  draw();
-  sceneTimer = setInterval(draw, 450);
 }
 
 function tileHtml(d) {
@@ -183,8 +145,15 @@ function tick() {
   clearTimeout(tickTimer);
   if (st.currentDay() !== today && !unmountGame) return home();
   const { d, h, m, s } = splitMs(BIRTHDAY - Date.now());
+  const prevSec = frame.querySelector('[data-cd="sek"]')?.textContent;
   const vals = { dni: d, godz: h, min: m, sek: s };
   frame.querySelectorAll('[data-cd]').forEach((b) => (b.textContent = pad2(vals[b.dataset.cd])));
+  const sec = frame.querySelector('[data-cd="sek"]');
+  if (sec && prevSec !== sec.textContent) {
+    sec.classList.remove('tick');
+    void sec.offsetWidth;
+    sec.classList.add('tick');
+  }
   tickTimer = setTimeout(tick, 1000 - (Date.now() % 1000) + 10);
 }
 
@@ -194,7 +163,7 @@ function play(n) {
   const d = CONFIG.days[n - 1];
   const mount = GAMES[d.game];
   if (!mount) return;
-  clearInterval(sceneTimer);
+  stopRoom();
   const screen = el('<div class="screen"></div>');
   swap(screen);
   unmountGame = mount(screen, {
@@ -251,8 +220,7 @@ function profile() {
       <button class="btn small" data-act="close">ZAMKNIJ</button>
     </div>`);
 
-  const av = spriteCanvas(SPR.pati, pal, st.hasItem('kokardka') ? [SPR.patiBow] : []);
-  m.querySelector('.prof-avatar').append(av);
+  m.querySelector('.prof-avatar').innerHTML = '<img src="/art/pati.webp" alt="">';
   m.querySelectorAll('.inv-slot').forEach((b) => {
     const id = b.dataset.item;
     b.append(spriteCanvas(owned.includes(id) && ITEM_SPRITES[id] ? ITEM_SPRITES[id] : SPR.question, pal));
