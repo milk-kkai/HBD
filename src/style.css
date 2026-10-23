@@ -192,10 +192,6 @@ canvas.spr {
 .tint-warm {
   background: radial-gradient(130% 80% at 50% 42%, transparent 55%, rgba(45, 15, 30, 0.38));
 }
-.tint-pink {
-  background: radial-gradient(130% 80% at 50% 42%, rgba(255, 120, 180, 0.12) 40%, rgba(90, 10, 60, 0.4));
-  mix-blend-mode: hard-light;
-}
 .pati {
   aspect-ratio: 334 / 930;
   cursor: pointer;
@@ -238,25 +234,318 @@ canvas.spr {
   transform: translate(-50%, -100%) scale(1);
 }
 .rug {
-  container-type: inline-size;
-  filter: drop-shadow(0 0.5cqw 0.8cqw rgba(60, 25, 15, 0.4));
+  display: block;
+  image-rendering: pixelated;
+  transform: perspective(95cqh) rotateX(33deg);
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0.6cqw 0.7cqw rgba(60, 25, 15, 0.45));
+  pointer-events: none;
 }
-.rug img {
+.curtains {
+  z-index: 3;
+  pointer-events: none;
+}
+.room-fx {
+  z-index: 2;
+}
+.glow {
+  z-index: 2;
+}
+.tint {
+  z-index: 500;
+}
+.room.editing .pati {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.room.editing .tint-warm {
+  background: radial-gradient(130% 80% at 50% 42%, rgba(30, 10, 30, 0.12) 40%, rgba(30, 10, 30, 0.5));
+}
+
+/* ---------- dekoracje ---------- */
+.decor {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+}
+.decor .decor-img {
   display: block;
   width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0.3cqw 0.3cqw rgba(50, 20, 10, 0.4));
+}
+.decor .decor-img.smooth {
+  image-rendering: auto;
+}
+.decor.squish {
+  animation: squish 0.45s ease-out;
+}
+.lamp-glow {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  width: 520%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--lamp-c, rgba(255, 196, 120, 0.75)), rgba(255, 190, 120, 0.12) 60%, transparent);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: lamp 3s ease-in-out infinite;
+}
+.room[data-lamp='none'] .lamp-glow {
+  display: none;
+}
+.room[data-lamp='pink'] {
+  --lamp-c: rgba(255, 110, 180, 0.85);
+}
+.room[data-lamp='purple'] {
+  --lamp-c: rgba(170, 110, 255, 0.85);
+}
+.room[data-lamp='pink'] .tint-lamp {
+  background: rgba(255, 90, 170, 0.2);
+  mix-blend-mode: soft-light;
+}
+.room[data-lamp='purple'] .tint-lamp {
+  background: rgba(150, 90, 255, 0.24);
+  mix-blend-mode: soft-light;
+}
+.room[data-lamp='disco'] .tint-lamp {
+  mix-blend-mode: soft-light;
+  animation: disco 2.4s steps(8) infinite;
+}
+.room[data-lamp='disco'] .lamp-glow {
+  animation: disco-glow 2.4s steps(8) infinite;
+}
+.decor-garland {
+  pointer-events: none;
+}
+.garland {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.garland-hit {
+  position: absolute;
+  pointer-events: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.bulb {
+  animation: twinkle 2.4s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+.bulb-glow {
+  opacity: 0.35;
+  filter: blur(5px);
+}
+.decor-garland[data-mode='1'] .bulb {
+  animation: twinkle 1.2s steps(2) infinite;
+  animation-delay: calc(var(--i) * 0.07s);
+}
+.decor-garland[data-mode='2'] .bulb {
+  animation: twinkle 0.35s steps(2) infinite;
+  animation-delay: calc(var(--i) * 0.05s);
+}
+
+/* miejsca do wstawiania */
+.slot {
+  display: grid;
+  place-items: center;
+  border: 0.14em dashed rgba(255, 250, 240, 0.65);
+  border-radius: 0.45em;
+  background: rgba(255, 250, 240, 0.08);
+  padding: 0;
+  cursor: pointer;
+}
+.slot i {
+  font-style: normal;
+  font-size: 1.1em;
+  color: #fff;
+  text-shadow: 0 0.08em 0 var(--ink);
+}
+.slot.taken {
+  background: transparent;
+}
+.slot.taken.idle i {
+  opacity: 0;
+}
+.slot.fit {
+  border-color: var(--gold);
+  background: rgba(255, 214, 120, 0.22);
+  box-shadow: 0 0 0.9em rgba(255, 200, 100, 0.85), inset 0 0 0.6em rgba(255, 220, 140, 0.6);
+  animation: slot 0.9s ease-in-out infinite;
+}
+.slot.fit.taken {
+  background: rgba(255, 214, 120, 0.12);
+}
+.slot.mine {
+  border-style: solid;
+  border-color: var(--pink);
+  box-shadow: 0 0 0.9em rgba(255, 120, 180, 0.9);
+}
+.slot.nofit {
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* taca z rzeczami */
+.tray {
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  border: 0.15em solid var(--ink);
+  border-radius: 0.55em;
+  box-shadow: 0 0.25em 0 var(--ink);
+  padding: 0.55em 0.6em 0.6em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.tray-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+.tray-head .btn {
+  width: auto;
+  background: var(--pink);
+  color: var(--ink);
+  box-shadow: 0 0.2em 0 var(--ink);
+}
+.tray-title {
+  font-size: 1.05em;
+  letter-spacing: 0.08em;
+}
+.tray-hint {
+  font-size: 0.72em;
+  color: var(--dark);
+}
+.tray-items {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35em;
+}
+.tray-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15em;
+  padding: 0.35em 0.2em 0.25em;
+  background: var(--white);
+  border: 0.12em solid var(--ink);
+  border-radius: 0.35em;
+  box-shadow: 0 0.15em 0 var(--ink);
+}
+.ti-img {
+  display: block;
+  width: 100%;
+  height: 2.1em;
+}
+.ti-img canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   image-rendering: pixelated;
 }
-.rug-num {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  font-size: 7.4cqw;
-  line-height: 1;
-  color: #5c1b3a;
-  letter-spacing: 0.03em;
-  text-shadow: 0 0.05em 0 rgba(255, 240, 230, 0.55), 0 -0.03em 0 rgba(120, 30, 70, 0.5);
+.ti-name {
+  font-size: 0.55em;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--dark);
+  min-height: 2.2em;
 }
-.rug-num.tick {
-  animation: tick 0.3s steps(3);
+.tray-item.sel {
+  background: #fff2c6;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 0.15em var(--gold), 0 0.15em 0 var(--ink);
+}
+.tray-item.placed::after {
+  content: '✓';
+  position: absolute;
+  top: -0.35em;
+  right: -0.3em;
+  font-size: 0.7em;
+  background: var(--green);
+  color: #fff;
+  border: 0.12em solid var(--ink);
+  border-radius: 1em;
+  padding: 0 0.3em;
+}
+.tray-item.new::before {
+  content: 'NOWE';
+  position: absolute;
+  top: -0.45em;
+  left: -0.3em;
+  font-size: 0.5em;
+  background: var(--pink);
+  color: var(--ink);
+  border: 0.12em solid var(--ink);
+  border-radius: 1em;
+  padding: 0 0.35em;
+}
+.tray-item.locked {
+  opacity: 0.45;
+  background: var(--light);
+}
+.hud-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  align-items: flex-start;
+}
+.decor-btn {
+  position: relative;
+  overflow: visible !important;
+}
+.decor-btn.on {
+  background: var(--pink);
+}
+.mis-ico {
+  display: block;
+  width: 1.8em;
+  height: 1.8em;
+}
+.mis-ico canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.decor-btn.pulse .mis-ico {
+  animation: bob 0.9s steps(2) infinite;
+}
+.badge {
+  position: absolute;
+  top: -0.5em;
+  right: -0.5em;
+  font-size: 0.65em;
+  background: var(--pink);
+  color: var(--ink);
+  border: 0.14em solid var(--ink);
+  border-radius: 1em;
+  padding: 0.05em 0.4em;
+}
+.photo-big canvas {
+  display: block;
+  width: 55%;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+.photo-big img {
+  display: block;
+  width: 100%;
+  border-radius: 0.3em;
+  border: 0.15em solid var(--ink);
 }
 
 .home-ui {
@@ -687,13 +976,21 @@ canvas.world {
   top: 0.3em;
   transform: translate(-50%, 3em) scale(0);
 }
-.loot .spr {
-  height: 4em;
+.loot {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-end;
+}
+.loot canvas {
+  display: block;
+  height: 3.6em;
+  width: auto;
+  image-rendering: pixelated;
 }
 .loot.on {
   animation: pop 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) forwards;
 }
-.loot.on .spr {
+.loot.on canvas {
   animation: bob 1s 0.6s steps(2) infinite;
 }
 .chest-hint {
@@ -743,6 +1040,27 @@ canvas.world {
   padding: 0 5px;
 }
 
+@keyframes squish {
+  30% { transform: scale(1.14, 0.82); }
+  60% { transform: scale(0.94, 1.08); }
+}
+@keyframes twinkle {
+  50% { opacity: 0.35; }
+}
+@keyframes slot {
+  50% { box-shadow: 0 0 0.3em rgba(255, 200, 100, 0.5), inset 0 0 0.3em rgba(255, 220, 140, 0.3); }
+}
+@keyframes disco {
+  0% { background: rgba(255, 90, 170, 0.28); }
+  25% { background: rgba(140, 90, 255, 0.28); }
+  50% { background: rgba(80, 200, 220, 0.28); }
+  75% { background: rgba(255, 200, 80, 0.28); }
+  100% { background: rgba(255, 90, 170, 0.28); }
+}
+@keyframes disco-glow {
+  0% { --lamp-c: rgba(255, 90, 170, 0.7); filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
 @keyframes lamp {
   0%, 100% { opacity: 0.78; }
   50% { opacity: 1; }

@@ -7,27 +7,45 @@ export const CONFIG = {
   timeZone: 'Europe/Warsaw',
 
   // Kod do finału: cyfry zbierane z dni 3–6 składają się w "2910".
-  // Dni weekendowe (1–2) dają tylko skrzynkę.
+  // Każda skrzynka daje rzeczy z listy `items` (ubrania albo dekoracje do pokoju).
   days: [
-    { n: 1, date: '2026-10-23', dow: 'PT', game: 'catch', title: 'Łap tort!', goal: 20, reward: { item: 'kokardka' } },
-    { n: 2, date: '2026-10-24', dow: 'SB', game: 'dreamhouse', title: 'Dreamhouse', reward: { item: 'okulary' } },
-    { n: 3, date: '2026-10-25', dow: 'ND', game: 'karne', title: 'Kucykowe karne', reward: { digit: '2', item: 'buty' } },
-    { n: 4, date: '2026-10-26', dow: 'PN', game: 'poker', title: 'Poker', reward: { digit: '9', item: 'zeton' } },
-    { n: 5, date: '2026-10-27', dow: 'WT', game: 'escape', title: 'Escape room', reward: { digit: '1', item: 'klucz' } },
-    { n: 6, date: '2026-10-28', dow: 'ŚR', game: 'pianino', title: 'Pianino', reward: { digit: '0', item: 'kurtka' } },
+    { n: 1, date: '2026-10-23', dow: 'PT', game: 'catch', title: 'Łap tort!', goal: 20, reward: { items: ['kokardka', 'ramka'] } },
+    { n: 2, date: '2026-10-24', dow: 'SB', game: 'dreamhouse', title: 'Dreamhouse', reward: { items: ['okulary', 'plakat', 'zajaczek'] } },
+    { n: 3, date: '2026-10-25', dow: 'ND', game: 'karne', title: 'Kucykowe karne', reward: { digit: '2', items: ['buty', 'mis'] } },
+    { n: 4, date: '2026-10-26', dow: 'PN', game: 'poker', title: 'Poker', reward: { digit: '9', items: ['zeton', 'lampka'] } },
+    { n: 5, date: '2026-10-27', dow: 'WT', game: 'escape', title: 'Escape room', reward: { digit: '1', items: ['klucz', 'girlanda', 'polaroid'] } },
+    { n: 6, date: '2026-10-28', dow: 'ŚR', game: 'pianino', title: 'Pianino', reward: { digit: '0', items: ['kurtka', 'kwiatek'] } },
     { n: 7, date: '2026-10-29', dow: 'CZ', game: 'finale', title: 'FINAŁ', reward: {} },
   ],
 
-  // Pokój na ekranie menu: od którego dnia pojawia się dana rzecz.
+  // Pokój na ekranie menu. Miejsca (sloty) to jedyne punkty, w które Pati może coś wstawić.
+  // x/y w pikselach grafiki pokoju (941×1672); y to podstawa rzeczy (albo środek dla 'wall'),
+  // w to szerokość rzeczy w tym miejscu.
   room: {
     background: '/art/room.webp',
-    layers: { candle: 1, pinkLight: 3 },
+    slots: [
+      { id: 'sciana', kind: 'wall', x: 124, y: 292, w: 58 },
+      { id: 'szyba-l', kind: 'wall', x: 334, y: 492, w: 54 },
+      { id: 'szyba-p', kind: 'wall', x: 650, y: 492, w: 54 },
+      { id: 'karnisz', kind: 'garland', x: 490, y: 200, w: 640 },
+      { id: 'parapet', kind: 'surface', x: 352, y: 628, w: 46 },
+      { id: 'szafka', kind: 'surface', x: 389, y: 706, w: 50 },
+      { id: 'lozko-1', kind: 'bed', x: 228, y: 716, w: 74 },
+      { id: 'lozko-2', kind: 'bed', x: 132, y: 726, w: 74 },
+      { id: 'podloga-l', kind: 'floor', x: 384, y: 990, w: 96 },
+      { id: 'podloga-p', kind: 'floor', x: 690, y: 992, w: 96 },
+    ],
   },
 
   // ?dev=milk w adresie włącza panel testowy (zmiana dnia, reset postępu).
   devKey: 'milk',
 };
 
+// kind: 'ubranie' | 'przedmiot' trafia do karty postaci, 'dekoracja' do pokoju.
+// fits: w jakie rodzaje miejsc da się wstawić dekorację; size: mnożnik szerokości miejsca.
+// action: co się dzieje po kliknięciu w pokoju (photo = powiększenie, plush = ściśnięcie,
+// lamp = zmiana światła z upgrade'ami, garland = tryb migania).
+// photo: ścieżka do prawdziwego zdjęcia (np. '/photos/my.jpg'), wtedy ramka je pokaże.
 export const ITEMS = {
   kokardka: { name: 'Różowa kokardka', kind: 'ubranie', desc: 'Pasuje do wszystkiego. Szczególnie do urodzin.' },
   okulary: { name: 'Okulary gwiazdy', kind: 'ubranie', desc: '???' },
@@ -35,4 +53,20 @@ export const ITEMS = {
   zeton: { name: 'Szczęśliwy żeton', kind: 'przedmiot', desc: '???' },
   klucz: { name: 'Stary klucz', kind: 'przedmiot', desc: '???' },
   kurtka: { name: 'Kurtka gwiazdy', kind: 'ubranie', desc: '???' },
+
+  ramka: { name: 'Ramka ze zdjęciem', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Tu będzie nasze zdjęcie ♥' },
+  plakat: { name: 'Plakat', kind: 'dekoracja', fits: ['wall'], action: 'photo', desc: 'Plakat, który wisi u Ciebie' },
+  polaroid: { name: 'Polaroid', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Zdjęcie z tamtego wieczoru' },
+  zajaczek: { name: 'Pluszowy zajączek', kind: 'dekoracja', fits: ['bed', 'floor', 'surface'], size: { floor: 0.7 }, action: 'plush', desc: 'Miękki i trochę wścibski' },
+  mis: { name: 'Pluszowy miś', kind: 'dekoracja', fits: ['bed', 'floor', 'surface'], size: { floor: 0.8 }, action: 'plush', desc: 'Przytula za nas' },
+  lampka: { name: 'Lampka', kind: 'dekoracja', fits: ['surface', 'floor'], size: { floor: 0.6 }, action: 'lamp', desc: 'Kliknij, żeby zmienić światło. Każda wygrana = upgrade' },
+  girlanda: { name: 'Lampki na karnisz', kind: 'dekoracja', fits: ['garland'], action: 'garland', desc: 'Kliknij, żeby zmienić miganie' },
+  kwiatek: { name: 'Kwiatek', kind: 'dekoracja', fits: ['surface', 'floor'], size: { floor: 0.6 }, desc: 'Podlewać raz w tygodniu' },
 };
+
+export const LAMP_MODES = [
+  { id: 'warm', name: 'ciepłe' },
+  { id: 'pink', name: 'różowe' },
+  { id: 'purple', name: 'fioletowe' },
+  { id: 'disco', name: 'disco' },
+];

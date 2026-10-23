@@ -4,6 +4,7 @@ import { zoneMidnight, splitMs, humanIn } from './time.js';
 import { paletteFor, applyPalette } from './palette.js';
 import { SPR, spriteCanvas, ITEM_SPRITES } from './sprites.js';
 import { mountRoom } from './room.js';
+import { decorCanvas } from './decor.js';
 import { blip, jingle, isMuted, toggleMute } from './audio.js';
 import * as st from './state.js';
 import { mountCatch } from './games/catch.js';
@@ -13,35 +14,31 @@ const GAMES = { catch: mountCatch };
 const frame = document.getElementById('frame');
 const BIRTHDAY = zoneMidnight(CONFIG.birthdayDate);
 const TOTAL = CONFIG.days.length;
+const ALL_DECOR = Object.keys(ITEMS).filter((id) => ITEMS[id].kind === 'dekoracja');
 
 let today = 0;
-let pal = null;
+let pal = paletteFor();
 let unmountGame = null;
 let tickTimer = 0;
-let unmountRoom = null;
+let decor = null; // tryb urządzania: { selected: itemId | null }
 
+applyPalette(pal);
 st.initDev();
 
-function refreshDay() {
-  today = st.currentDay();
-  pal = paletteFor();
-  applyPalette(pal);
-}
-
-function stopRoom() {
-  if (unmountRoom) {
-    unmountRoom();
-    unmountRoom = null;
-  }
-}
+// Pokój jest montowany raz i przenoszony między ekranami, żeby nie migał.
+const roomHost = document.createElement('div');
+roomHost.className = 'room-host';
+const room = mountRoom(roomHost, { pal, onPhoto: photoModal });
+room.onSlotTap = onSlotTap;
+room.onDecorTap = (slotId, itemId) => selectDecor(itemId);
 
 const el = (html) => {
   const t = document.createElement('template');
   t.innerHTML = html.trim();
   return t.content.firstElementChild;
 };
-const pad2 = (n) => String(n).padStart(2, '0');
 const dayLabel = (d) => d.date.slice(8, 10) + '.' + d.date.slice(5, 7);
+const isDecor = (id) => ITEMS[id]?.kind === 'dekoracja';
 
 // ---------- ekran główny ----------
 
@@ -50,41 +47,56 @@ function home() {
     unmountGame();
     unmountGame = null;
   }
-  refreshDay();
+  today = st.currentDay();
   const isBirthday = today === TOTAL;
   const after = today > TOTAL;
-  const focus = CONFIG.days[Math.min(Math.max(today, 1), TOTAL) - 1];
   const chests = st.unopenedChests().length;
+  const unseen = st.unseenDecor().length;
 
   const screen = el(`
-    <div class="screen home">
-      <div class="room-host"></div>
+    <div class="screen home ${decor ? 'decorating' : ''}">
       <div class="home-ui">
         <div class="hud">
-          <button class="chip panel-sm" data-act="profile" aria-label="Skrzynki">
-            <span class="ico chest-ico"></span><span>${chests}</span>
-          </button>
+          <div class="hud-col">
+            <button class="chip panel-sm" data-act="profile" aria-label="Skrzynki">
+              <span class="ico chest-ico"></span><span>${chests}</span>
+            </button>
+            <button class="sq-btn panel-sm decor-btn ${decor ? 'on' : ''}" data-act="decor" aria-label="Urządzaj pokój">
+              <span class="ico mis-ico"></span>${unseen ? `<b class="badge">${unseen}</b>` : ''}
+            </button>
+          </div>
           <div class="day-pill panel-sm">
             <div class="day-lbl">${after ? 'PO URODZINACH' : isBirthday ? 'URODZINY!' : `DZIEŃ ${Math.max(today, 1)}/${TOTAL}`}</div>
             <div class="dots">${CONFIG.days.map((d) => `<i class="${d.n < today || after ? 'past' : d.n === today ? 'now' : ''}"></i>`).join('')}</div>
           </div>
           <button class="sq-btn panel-sm" data-act="profile" aria-label="Profil"><span class="face-ico"></span></button>
         </div>
-        <div class="bottom">
-          <div class="today-card"></div>
-          <div class="week">
-            ${CONFIG.days.map((d) => tileHtml(d)).join('')}
-          </div>
-        </div>
+        <div class="bottom"></div>
       </div>
     </div>`);
 
+  screen.prepend(roomHost);
   screen.querySelector('.chest-ico').append(spriteCanvas(SPR.chest, pal));
+  screen.querySelector('.mis-ico').append(decorCanvas('mis', pal));
   if (chests) screen.querySelector('.chip').classList.add('pulse');
-  fillTodayCard(screen.querySelector('.today-card'), focus);
-  stopRoom();
-  unmountRoom = mountRoom(screen.querySelector('.room-host'), { day: Math.max(today, 1) });
-  screen.querySelectorAll('.tile').forEach((t) => {
+  if (unseen) screen.querySelector('.decor-btn').classList.add('pulse');
+  const bottom = screen.querySelector('.bottom');
+  if (decor) fillTray(bottom);
+  else fillMenu(bottom);
+
+  screen.addEventListener('click', onHomeClick);
+  swap(screen);
+  room.refresh();
+  room.setEditing(decor);
+  tick();
+  devPanel();
+}
+
+function fillMenu(bottom) {
+  const focus = CONFIG.days[Math.min(Math.max(today, 1), TOTAL) - 1];
+  bottom.innerHTML = `<div class="today-card"></div><div class="week">${CONFIG.days.map(tileHtml).join('')}</div>`;
+  fillTodayCard(bottom.querySelector('.today-card'), focus);
+  bottom.querySelectorAll('.tile').forEach((t) => {
     const d = CONFIG.days[Number(t.dataset.n) - 1];
     const a = st.access(d.n, today);
     const ico = t.querySelector('.tile-ico');
@@ -93,11 +105,6 @@ function home() {
     else if (st.dayState(d.n).won) ico.append(spriteCanvas(SPR.heart, pal));
     else ico.append(spriteCanvas(SPR.question, pal));
   });
-
-  screen.addEventListener('click', onHomeClick);
-  swap(screen);
-  tick();
-  devPanel();
 }
 
 function tileHtml(d) {
@@ -126,11 +133,24 @@ function fillTodayCard(card, d) {
 }
 
 function onHomeClick(e) {
-  const t = e.target.closest('[data-act], .tile');
+  const t = e.target.closest('[data-act], .tile, .tray-item');
   if (!t) return;
   blip(600, 0.04);
-  if (t.dataset.act === 'profile') return profile();
-  if (t.dataset.act === 'play') return play(Number(t.dataset.n));
+  const act = t.dataset.act;
+  if (act === 'profile') return profile();
+  if (act === 'play') return play(Number(t.dataset.n));
+  if (act === 'decor') return toggleDecor();
+  if (act === 'decor-done') return toggleDecor(false);
+  if (act === 'decor-remove') {
+    st.removeItem(decor.selected);
+    room.say(`${ITEMS[decor.selected].name}: do szuflady`);
+    decor.selected = null;
+    return home();
+  }
+  if (t.classList.contains('tray-item')) {
+    if (t.classList.contains('locked')) return toast('Wygrywaj gry, żeby to zdobyć ♥');
+    return selectDecor(decor.selected === t.dataset.item ? null : t.dataset.item);
+  }
   if (t.classList.contains('tile')) {
     const d = CONFIG.days[Number(t.dataset.n) - 1];
     const a = st.access(d.n, today);
@@ -145,16 +165,78 @@ function tick() {
   clearTimeout(tickTimer);
   if (st.currentDay() !== today && !unmountGame) return home();
   const { d, h, m, s } = splitMs(BIRTHDAY - Date.now());
-  const prevSec = frame.querySelector('[data-cd="sek"]')?.textContent;
-  const vals = { dni: d, godz: h, min: m, sek: s };
-  frame.querySelectorAll('[data-cd]').forEach((b) => (b.textContent = pad2(vals[b.dataset.cd])));
-  const sec = frame.querySelector('[data-cd="sek"]');
-  if (sec && prevSec !== sec.textContent) {
-    sec.classList.remove('tick');
-    void sec.offsetWidth;
-    sec.classList.add('tick');
-  }
+  room.setCountdown({ dni: d, godz: h, min: m, sek: s });
   tickTimer = setTimeout(tick, 1000 - (Date.now() % 1000) + 10);
+}
+
+// ---------- urządzanie pokoju ----------
+
+function toggleDecor(on = !decor, selected = null) {
+  decor = on ? { selected } : null;
+  home();
+  if (on) st.markSeen(st.ownedDecor());
+}
+
+function selectDecor(id) {
+  decor.selected = id;
+  if (id) blip(660, 0.05);
+  home();
+}
+
+function onSlotTap(slotId) {
+  if (!decor) return;
+  const slot = CONFIG.room.slots.find((s) => s.id === slotId);
+  const there = st.placed()[slotId];
+  const sel = decor.selected;
+  if (!sel) {
+    if (there) return selectDecor(there);
+    return toast('Najpierw wybierz rzecz z dołu');
+  }
+  if (!ITEMS[sel].fits.includes(slot.kind)) return toast('To tu nie pasuje');
+  if (there === sel) {
+    decor.selected = null;
+    return home();
+  }
+  const displaced = st.placeItem(slotId, sel);
+  jingle([660, 880], 0.06);
+  room.say(displaced ? `zamiana! ${ITEMS[displaced].name} wraca do szuflady` : `${ITEMS[sel].name} ✓`);
+  decor.selected = null;
+  home();
+}
+
+function fillTray(bottom) {
+  const owned = st.ownedDecor();
+  const map = st.placed();
+  const placedIds = Object.values(map);
+  const unseen = st.unseenDecor();
+  const sel = decor.selected;
+  const hint = !owned.length
+    ? 'wygrywaj gry, żeby zdobywać rzeczy do pokoju'
+    : sel
+      ? `${ITEMS[sel].name}: stuknij świecące miejsce`
+      : 'wybierz rzecz, potem miejsce w pokoju';
+  bottom.innerHTML = `
+    <div class="tray">
+      <div class="tray-head">
+        <div>
+          <div class="tray-title">URZĄDZAJ POKÓJ</div>
+          <div class="tray-hint">${hint}</div>
+        </div>
+        <button class="btn small" data-act="decor-done">GOTOWE</button>
+      </div>
+      <div class="tray-items">
+        ${ALL_DECOR.map((id) => {
+          const has = owned.includes(id);
+          const cls = ['tray-item', has ? '' : 'locked', id === sel ? 'sel' : '', placedIds.includes(id) ? 'placed' : '', unseen.includes(id) ? 'new' : ''].join(' ');
+          return `<button class="${cls}" data-item="${id}"><span class="ti-img"></span><span class="ti-name">${has ? ITEMS[id].name : '???'}</span></button>`;
+        }).join('')}
+      </div>
+      ${sel && placedIds.includes(sel) ? '<button class="btn ghost small" data-act="decor-remove">ZDEJMIJ ZE ŚCIANY / PÓŁKI</button>' : ''}
+    </div>`;
+  bottom.querySelectorAll('.tray-item').forEach((b) => {
+    const id = b.dataset.item;
+    b.querySelector('.ti-img').append(owned.includes(id) ? decorCanvas(id, pal) : spriteCanvas(SPR.question, pal));
+  });
 }
 
 // ---------- gra ----------
@@ -163,7 +245,8 @@ function play(n) {
   const d = CONFIG.days[n - 1];
   const mount = GAMES[d.game];
   if (!mount) return;
-  stopRoom();
+  decor = null;
+  room.setEditing(null);
   const screen = el('<div class="screen"></div>');
   swap(screen);
   unmountGame = mount(screen, {
@@ -193,20 +276,26 @@ function modal(html, cls = '') {
   return m;
 }
 
+function itemIcon(id) {
+  if (isDecor(id)) return decorCanvas(id, pal);
+  return spriteCanvas(ITEM_SPRITES[id] || SPR.star, pal);
+}
+
 function profile() {
   const slots = st.codeSlots();
-  const owned = st.ownedItems();
+  const owned = st.ownedItems().filter((id) => !isDecor(id));
   const won = CONFIG.days.filter((d) => d.n < TOTAL && st.dayState(d.n).won).length;
   const chests = st.unopenedChests();
-  const itemIds = CONFIG.days.map((d) => d.reward.item).filter(Boolean);
+  const itemIds = CONFIG.days.flatMap(st.rewardItems).filter((id) => !isDecor(id));
   const m = modal(`
     <div class="modal-title">KARTA POSTACI</div>
     <div class="prof-top">
-      <div class="prof-avatar"></div>
+      <div class="prof-avatar"><img src="/art/pati.webp" alt=""></div>
       <div class="prof-stats">
         <div class="prof-name">${CONFIG.name.toUpperCase()}</div>
         <div>wygrane dni: <b>${won}/${TOTAL - 1}</b></div>
         <div>przedmioty: <b>${owned.length}/${itemIds.length}</b></div>
+        <div>do pokoju: <b>${st.ownedDecor().length}/${ALL_DECOR.length}</b></div>
       </div>
     </div>
     <div class="sec-lbl">TAJNY KOD</div>
@@ -220,10 +309,9 @@ function profile() {
       <button class="btn small" data-act="close">ZAMKNIJ</button>
     </div>`);
 
-  m.querySelector('.prof-avatar').innerHTML = '<img src="/art/pati.webp" alt="">';
   m.querySelectorAll('.inv-slot').forEach((b) => {
     const id = b.dataset.item;
-    b.append(spriteCanvas(owned.includes(id) && ITEM_SPRITES[id] ? ITEM_SPRITES[id] : SPR.question, pal));
+    b.append(owned.includes(id) ? itemIcon(id) : spriteCanvas(SPR.question, pal));
   });
   m.addEventListener('click', (e) => {
     const slot = e.target.closest('.inv-slot');
@@ -262,20 +350,39 @@ function openChestModal(n) {
       m.querySelector('.chest-hint').textContent = taps === 1 ? 'jeszcze 2…' : 'jeszcze raz!';
       return;
     }
-    const itemId = st.openChest(n);
-    const it = ITEMS[itemId];
+    const ids = st.openChest(n);
     big.replaceChildren(spriteCanvas(SPR.chestOpen, pal));
     m.querySelector('.rays').classList.add('on');
     const loot = m.querySelector('.loot');
-    loot.append(spriteCanvas(ITEM_SPRITES[itemId] || SPR.star, pal));
+    ids.forEach((id) => loot.append(itemIcon(id)));
     loot.classList.add('on');
     jingle([523, 659, 784, 1047, 1319], 0.08);
-    m.querySelector('.chest-hint').innerHTML = `<b>${it.name}</b><br><span class="small">${it.kind} · ${it.desc}</span>`;
+    m.querySelector('.chest-hint').innerHTML = ids
+      .map((id) => `<b>${ITEMS[id].name}</b> <span class="small">· ${isDecor(id) ? 'do pokoju' : ITEMS[id].kind}</span>`)
+      .join('<br>');
+    const firstDecor = ids.find(isDecor);
     m.querySelector('.chest-after').innerHTML = `
       ${d.reward.digit ? `<div class="small">+ cyfra do tajnego kodu: <b>${d.reward.digit}</b></div>` : ''}
-      ${it.kind === 'ubranie' ? '<div class="small">to ubranie przyda się w finale…</div>' : ''}
-      <button class="btn" data-act="close">SUPER!</button>`;
+      ${ids.some((id) => ITEMS[id].kind === 'ubranie') ? '<div class="small">ubranie przyda się w finale…</div>' : ''}
+      ${firstDecor ? `<button class="btn gold" data-to-decor="${firstDecor}">WSTAW DO POKOJU</button>` : ''}
+      <button class="btn ${firstDecor ? 'ghost' : ''}" data-act="close">SUPER!</button>`;
   });
+  m.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-to-decor]');
+    if (!b) return;
+    m.remove();
+    toggleDecor(true, b.dataset.toDecor);
+  });
+}
+
+function photoModal(id) {
+  const it = ITEMS[id];
+  const m = modal(`
+    <div class="modal-title">${it.name.toUpperCase()}</div>
+    <div class="photo-big">${it.photo ? `<img src="${it.photo}" alt="">` : ''}</div>
+    <div class="small">${it.desc}</div>
+    <button class="btn small" data-act="close">ZAMKNIJ</button>`);
+  if (!it.photo) m.querySelector('.photo-big').append(decorCanvas(id, pal));
 }
 
 function toast(msg) {
@@ -296,10 +403,11 @@ function devPanel() {
   frame.querySelector('.dev')?.remove();
   const p = el(`<div class="dev">DEV
       <button data-d="-1">−</button><b>${today}</b><button data-d="1">+</button>
-      <button data-reset>reset</button><button data-off>off</button></div>`);
+      <button data-win>wygraj</button><button data-reset>reset</button><button data-off>off</button></div>`);
   p.addEventListener('click', (e) => {
     e.stopPropagation();
     if (e.target.dataset.d) st.setDevDay(Math.min(TOTAL + 1, Math.max(0, today + Number(e.target.dataset.d))));
+    if ('win' in e.target.dataset) st.markWon(Math.min(Math.max(today, 1), TOTAL));
     if ('reset' in e.target.dataset) st.resetProgress();
     if ('off' in e.target.dataset) {
       st.setDevDay(null);

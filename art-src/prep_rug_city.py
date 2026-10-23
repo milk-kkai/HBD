@@ -38,7 +38,7 @@ for x0, x1 in ((74, 115), (148, 193), (224, 271), (300, 345)):
                     rug[y, x] = orig[y, x - d]; break
                 if x + d < x1 + 3 and light[y, x + d]:
                     rug[y, x] = orig[y, x + d]; break
-Image.fromarray(np.dstack([rug, alpha]).astype(np.uint8)).save('public/art/rug.png', optimize=True)
+Image.fromarray(np.dstack([rug, alpha]).astype(np.uint8)).save('art-src/rug-clean.png', optimize=True)
 
 # ---------- miasto za oknem ----------
 room = np.array(Image.open('public/art/room.webp').convert('RGB')).astype(int)

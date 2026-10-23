@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG, ITEMS } from './config.js';
 import { realDayNumber } from './time.js';
 
 const KEY = 'hbd-pati-v1';
@@ -19,7 +19,9 @@ function write(key, value) {
   } catch {}
 }
 
-let progress = read(KEY, { days: {}, items: [] });
+const fresh = () => ({ days: {}, items: [], room: { placed: {}, lamp: 0, lampSeen: 1, seen: [], garland: 0 } });
+let progress = read(KEY, fresh());
+progress.room = { ...fresh().room, ...(progress.room || {}) };
 
 export function dayState(n) {
   return progress.days[n] || { won: false, best: 0, chestOpened: false };
@@ -38,19 +40,70 @@ export function markWon(n) {
   if (!dayState(n).won) patchDay(n, { won: true });
 }
 
+export const rewardItems = (day) => day.reward.items ?? (day.reward.item ? [day.reward.item] : []);
+
 export function openChest(n) {
-  const day = CONFIG.days[n - 1];
   patchDay(n, { chestOpened: true });
-  const item = day.reward.item;
-  if (item && !progress.items.includes(item)) {
-    progress.items.push(item);
-    write(KEY, progress);
-  }
-  return item;
+  return rewardItems(CONFIG.days[n - 1]);
 }
 
-export const hasItem = (id) => progress.items.includes(id);
-export const ownedItems = () => [...progress.items];
+// Posiadane rzeczy wynikają z otwartych skrzynek, więc zmiana nagród w configu
+// działa też dla skrzynek otwartych wcześniej.
+export function ownedItems() {
+  const out = [];
+  for (const d of CONFIG.days)
+    if (dayState(d.n).chestOpened) for (const id of rewardItems(d)) if (ITEMS[id] && !out.includes(id)) out.push(id);
+  for (const id of progress.items) if (ITEMS[id] && !out.includes(id)) out.push(id);
+  return out;
+}
+export const hasItem = (id) => ownedItems().includes(id);
+export const ownedDecor = () => ownedItems().filter((id) => ITEMS[id].kind === 'dekoracja');
+export const winsCount = () => CONFIG.days.filter((d) => dayState(d.n).won).length;
+
+// --- pokój ---
+const saveRoom = () => write(KEY, progress);
+export const placed = () => ({ ...progress.room.placed });
+export const slotOf = (itemId) => Object.keys(progress.room.placed).find((s) => progress.room.placed[s] === itemId);
+
+// Wstawia rzecz w miejsce. Jeśli stała gdzie indziej, przenosi ją; jeśli miejsce było zajęte,
+// poprzednia rzecz wraca do ekwipunku.
+export function placeItem(slotId, itemId) {
+  const old = slotOf(itemId);
+  if (old) delete progress.room.placed[old];
+  const displaced = progress.room.placed[slotId];
+  progress.room.placed[slotId] = itemId;
+  saveRoom();
+  return displaced && displaced !== itemId ? displaced : null;
+}
+export function removeItem(itemId) {
+  const s = slotOf(itemId);
+  if (s) delete progress.room.placed[s];
+  saveRoom();
+}
+export const unseenDecor = () => ownedDecor().filter((id) => !progress.room.seen.includes(id));
+export function markSeen(ids) {
+  for (const id of ids) if (!progress.room.seen.includes(id)) progress.room.seen.push(id);
+  saveRoom();
+}
+
+// Lampka: liczba dostępnych kolorów rośnie z każdą wygraną (upgrade).
+export const lampUnlocked = (total) => Math.min(total, Math.max(1, winsCount()));
+export const lampMode = () => progress.room.lamp;
+export function setLampMode(i) {
+  progress.room.lamp = i;
+  saveRoom();
+}
+export function lampUpgradeSeen(n) {
+  const isNew = n > progress.room.lampSeen;
+  progress.room.lampSeen = Math.max(progress.room.lampSeen, n);
+  saveRoom();
+  return isNew;
+}
+export const garlandMode = () => progress.room.garland;
+export function setGarlandMode(i) {
+  progress.room.garland = i;
+  saveRoom();
+}
 
 export function unopenedChests() {
   return CONFIG.days.filter((d) => dayState(d.n).won && !dayState(d.n).chestOpened).map((d) => d.n);
@@ -63,7 +116,7 @@ export function codeSlots() {
 }
 
 export function resetProgress() {
-  progress = { days: {}, items: [] };
+  progress = fresh();
   write(KEY, progress);
 }
 
