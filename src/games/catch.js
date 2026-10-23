@@ -1,6 +1,7 @@
 import { SPR, drawSprite, drawNumber, spriteCanvas } from '../sprites.js';
 import { blip, jingle, playMusic, isMuted, toggleMute } from '../audio.js';
-import { hasItem, dayState } from '../state.js';
+import { hasItem, dayState, isDev } from '../state.js';
+import { createBalloons } from './balloons.js';
 
 const W = 96;
 const FLOOR = 14;
@@ -55,6 +56,7 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
   const overlay = $('.overlay');
   const g = cv.getContext('2d');
 
+  const balloons = createBalloons(W);
   const alreadyWon = dayState(day.n).won;
   const wearsBow = hasItem('kokardka');
   let H = 160;
@@ -86,6 +88,7 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     const r = stage.getBoundingClientRect();
     if (!r.width) return;
     H = Math.max(120, Math.round((W * r.height) / r.width));
+    balloons.setHeight(H);
     cv.width = W;
     cv.height = H;
     draw();
@@ -213,6 +216,8 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
       s.hurt = 0.5;
       blip(140, 0.25, 'sawtooth', 0.05, -60);
       burst(cx, cy, [pal.sky, pal.mid], 10);
+      for (const b of balloons.pop(3)) burst(b.x, b.y, [pal.pink, pal.gold, pal.white], 6);
+      setTimeout(() => blip(1500, 0.04, 'square', 0.04, -1100), 90);
       renderHud();
       if (navigator.vibrate) navigator.vibrate(60);
       if (s.lives <= 0) gameOver();
@@ -224,6 +229,8 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
       pts = 0;
     }
     s.score += pts;
+    // każdy punkt wypuszcza balonik zza podłogi
+    if (pts) balloons.spawn(pts, { y: H - FLOOR - 2, big: it.t.id === 'gift' });
     if (pts) s.pops.push({ x: cx - 4, y: it.y - 4, txt: `+${pts}`, life: 0.7 });
     blip(it.t.id === 'gift' ? 880 : 660 + Math.min(400, s.score * 8), 0.07, 'square', 0.05);
     burst(cx, cy, [pal.pink, pal.gold, pal.teal]);
@@ -231,6 +238,7 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
       s.won = true;
       jingle([523, 659, 784, 1047], 0.1);
       burst(W / 2, H / 2, [pal.pink, pal.gold, pal.teal, pal.purple], 40);
+      balloons.spawn(16, { layer: 'near', fast: true, y: H - FLOOR - 2 });
       if (!alreadyWon) onWin();
       toast(alreadyWon ? 'Cel osiągnięty!' : 'WYGRANA! +1 skrzynka');
     }
@@ -245,29 +253,58 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     setTimeout(() => el.remove(), 2200);
   }
 
-  function drawBackground() {
-    g.fillStyle = pal.paper;
-    g.fillRect(0, 0, W, H);
-    // girlanda z chorągiewkami
+  // ściana w pastelowe paski z boazerią, jak w pokoju Pati
+  function drawWall() {
+    const fy = H - FLOOR;
+    g.fillStyle = '#f8e6d8';
+    g.fillRect(0, 0, W, fy);
+    g.fillStyle = '#f3d6cf';
+    for (let x = 2; x < W; x += 8) g.fillRect(x, 0, 3, fy);
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let x = 2; x < W; x += 8) g.fillRect(x, 0, 1, fy);
+    // boazeria
+    const wy = fy - 12;
+    g.fillStyle = '#ecc7b5';
+    g.fillRect(0, wy, W, 12);
+    g.fillStyle = '#c99178';
+    g.fillRect(0, wy, W, 1);
+    g.fillStyle = '#fbe9de';
+    g.fillRect(0, wy + 1, W, 1);
+    g.fillStyle = '#d8a993';
+    for (let x = 0; x < W; x += 16) {
+      g.fillRect(x + 2, wy + 3, 12, 1);
+      g.fillRect(x + 2, wy + 9, 12, 1);
+      g.fillRect(x + 2, wy + 3, 1, 7);
+      g.fillRect(x + 13, wy + 3, 1, 7);
+    }
+  }
+
+  function drawBunting() {
     const flagColors = [pal.pink, pal.gold, pal.teal, pal.purple];
     g.fillStyle = pal.dark;
     for (let x = 0; x < W; x++) g.fillRect(x, 6 + Math.round(Math.sin((x / W) * Math.PI * 2) * 2), 1, 1);
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 8; i++) {
       const fx = 4 + i * 12;
       const fy = 7 + Math.round(Math.sin(((fx + 3) / W) * Math.PI * 2) * 2);
       g.fillStyle = flagColors[i % 4];
       for (let r = 0; r < 6; r++) g.fillRect(fx + Math.floor(r / 2), fy + r, 7 - Math.floor(r / 2) * 2, 1);
     }
-    // podłoga z płytek jak w lochu ze screena
+  }
+
+  // drewniana podłoga z deskami
+  function drawFloor() {
     const fy = H - FLOOR;
-    g.fillStyle = pal.light;
+    g.fillStyle = '#c98a55';
     g.fillRect(0, fy, W, FLOOR);
-    g.fillStyle = pal.mid;
+    g.fillStyle = '#7a4a2c';
     g.fillRect(0, fy, W, 1);
+    g.fillStyle = '#dba06b';
+    g.fillRect(0, fy + 1, W, 1);
+    g.fillStyle = '#a86b3f';
     for (let row = 0; row < 2; row++) {
       const y = fy + 1 + row * 7;
       g.fillRect(0, y + 6, W, 1);
-      for (let x = (row % 2) * 6; x < W; x += 12) g.fillRect(x, y, 1, 7);
+      for (let x = (row % 2) * 11; x < W; x += 22) g.fillRect(x, y, 1, 6);
     }
   }
 
@@ -275,7 +312,11 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     if (!s) reset();
     g.save();
     if (s.shake > 0) g.translate(Math.round((Math.random() - 0.5) * 4), Math.round((Math.random() - 0.5) * 3));
-    drawBackground();
+    drawWall();
+    balloons.draw(g, 'far');
+    balloons.draw(g, 'near');
+    drawBunting();
+    drawFloor();
     for (const it of s.items) drawSprite(g, it.t.spr, it.x, it.y, pal);
     const py = H - FLOOR - PH;
     if (!(s.hurt > 0 && Math.floor(s.hurt * 20) % 2)) drawMiniPati(py);
@@ -306,6 +347,10 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
     if (mode === 'play') update(dt);
+    if (mode !== 'pause') {
+      balloons.setTarget(Math.min(36, 3 + Math.floor((s?.score ?? 0) * 1.1)));
+      balloons.update(dt);
+    }
     draw();
   }
 
@@ -370,6 +415,10 @@ export function mountCatch(root, { day, pal, onExit, onWin, onScore }) {
         showOverlay('');
       } else start();
     } else if (isDown && e.key === 'Escape') pause();
+    else if (isDown && isDev() && (e.key === 'p' || e.key === 'P') && mode === 'play') {
+      // tryb testowy: +5 punktów, jakby złapała 5 tortów
+      for (let i = 0; i < 5; i++) catchItem({ t: TYPES[0], x: s.x, y: H - 40 });
+    }
     else return;
     e.preventDefault();
   };
