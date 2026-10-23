@@ -122,8 +122,8 @@ function fillTodayCard(card, d) {
     <div class="tc-icon"></div>
     <div class="tc-body">
       <div class="tc-tag">${today > TOTAL ? 'wybierz grę niżej' : `dzisiaj · ${d.dow} ${dayLabel(d)}`}</div>
-      <div class="tc-title">${ready ? d.title : '???'}</div>
-      <div class="tc-meta">${ready ? (d.goal ? `rekord: ${ds.best} · cel: ${d.goal}` : '') + (ds.won ? ' · ✓' : '') : 'gra jeszcze się ładuje… wróć za chwilę'}</div>
+      <div class="tc-title">${ready ? d.title : 'Niespodzianka w drodze'}</div>
+      <div class="tc-meta">${ready ? (d.goal ? `rekord: ${ds.best} · cel: ${d.goal}` : '') + (ds.won ? ' · ✓' : '') : 'zajrzyj rano ☀️'}</div>
     </div>
     ${ready && (a === 'today' || a === 'open') ? `<button class="btn play" data-act="play" data-n="${d.n}">▶ GRAJ</button>` : ''}
     ${catchups.length && !(a === 'today' && !ds.won) ? `<button class="btn small catchup" data-act="play" data-n="${catchups[0].n}">nadrób: ${catchups[0].title}</button>` : ''}`;
@@ -159,7 +159,7 @@ function onHomeClick(e) {
     const a = st.access(d.n, today);
     if (a === 'locked') toast(`Odblokuje się za ${humanIn(zoneMidnight(d.date) - Date.now())}`);
     else if (a === 'done') toast('Wygrana ✓ Wróci po urodzinach ♥');
-    else if (!GAMES[d.game]) toast('Ta gra jeszcze się szykuje…');
+    else if (!GAMES[d.game]) toast('Niespodzianka w drodze, zajrzyj rano ☀️');
     else play(d.n);
   }
 }
