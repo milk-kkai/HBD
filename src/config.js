@@ -70,7 +70,7 @@ export const ITEMS = {
     hires: true,
     desc: '',
   },
-  ramka: { name: 'Ramka ze zdjęciem', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Tu będzie nasze zdjęcie ♥' },
+  ramka: { name: 'Ramka ze zdjęciem', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Zamienimy kiedyś na nasze zdjęcie, co ty na to?' },
   plakat: { name: 'Plakat', kind: 'dekoracja', fits: ['wall'], action: 'photo', desc: 'Plakat, który wisi u Ciebie' },
   polaroid: { name: 'Polaroid', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Zdjęcie z tamtego wieczoru' },
   zajaczek: { name: 'Pluszowy zajączek', kind: 'dekoracja', fits: ['bed', 'floor', 'surface'], size: { floor: 0.7 }, action: 'plush', desc: 'Miękki i trochę wścibski' },
