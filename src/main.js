@@ -8,7 +8,7 @@ import { decorCanvas } from './decor.js';
 import { blip, jingle, isMuted, toggleMute, playMusic } from './audio.js';
 import * as st from './state.js';
 import { mountCatch } from './games/catch.js';
-import { startSync, login } from './sync.js';
+import { startSync, login, logout, isLoggedIn } from './sync.js';
 
 const GAMES = { catch: mountCatch };
 
@@ -310,7 +310,8 @@ function profile() {
     <div class="row">
       <button class="btn ghost small" data-act="mute">${isMuted() ? '♪ dźwięk: off' : '♪ dźwięk: on'}</button>
       <button class="btn small" data-act="close">ZAMKNIJ</button>
-    </div>`);
+    </div>
+    ${isLoggedIn() ? '<button class="link-btn" data-act="logout">wyloguj</button>' : ''}`);
 
   m.querySelectorAll('.inv-slot').forEach((b) => {
     const id = b.dataset.item;
@@ -327,6 +328,12 @@ function profile() {
     if (e.target.closest('[data-act="mute"]')) {
       toggleMute();
       profile();
+    }
+    if (e.target.closest('[data-act="logout"]')) {
+      m.remove();
+      decor = null;
+      home();
+      logout();
     }
   });
 }

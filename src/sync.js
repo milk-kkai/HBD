@@ -1,4 +1,4 @@
-// Synchronizacja postępu z chmurą (/api/save), chroniona hasłem.
+// Synchronizacja postępu z chmurą (/api/save), chroniona hasłem. Każde hasło to osobne konto.
 // - serwer bez bazy/hasła (503) albo brak sieci: wszystko działa lokalnie, bez logowania,
 // - zły albo brak hasła (401): pokazujemy ekran logowania,
 // - tryb testowy (dev): synchronizacja w ogóle wyłączona.
@@ -42,7 +42,15 @@ function adopt(remote) {
 function lostAuth() {
   enabled = false;
   storePassword('');
+  st.useAccount(null);
   onNeedLogin();
+}
+
+// serwer mówi, czyje to konto; przy zmianie konta wczytujemy jego lokalny zapis
+function switchAccount(account) {
+  if (!account || account === st.currentAccount()) return;
+  st.useAccount(account);
+  onChange();
 }
 
 async function push() {
@@ -52,7 +60,11 @@ async function push() {
   try {
     const r = await fetch(API, { method: 'POST', headers: headers(), body: JSON.stringify({ progress: st.getProgress() }), keepalive: true });
     if (r.status === 401) return lostAuth();
-    if (r.ok) adopt((await r.json()).progress);
+    if (r.ok) {
+      const data = await r.json();
+      switchAccount(data.account);
+      adopt(data.progress);
+    }
   } catch {}
 }
 
@@ -67,7 +79,8 @@ async function fetchRemote() {
     const r = await fetch(API, { headers: headers(), cache: 'no-store' });
     if (r.status === 401) return 'auth';
     if (!r.ok) return r.status === 503 ? 'off' : 'offline';
-    const remote = (await r.json()).progress;
+    const { progress: remote, account } = await r.json();
+    switchAccount(account);
     enabled = true;
     adopt(remote);
     // jeśli tutaj jest coś, czego serwer jeszcze nie ma, wyślij
@@ -93,6 +106,18 @@ export function startSync({ refresh, needLogin }) {
     } else pull().then((s) => s === 'auth' && lostAuth());
   });
   pull().then((s) => s === 'auth' && lostAuth());
+}
+
+export const isLoggedIn = () => enabled && !!storedPassword();
+
+// wylogowanie: na tym urządzeniu zostaje lokalny zapis konta, ale bez hasła nic się nie wyśle
+export function logout() {
+  enabled = false;
+  clearTimeout(timer);
+  timer = 0;
+  storePassword('');
+  st.useAccount(null);
+  onNeedLogin();
 }
 
 // logowanie z ekranu hasła: true = wpuszczona, false = złe hasło

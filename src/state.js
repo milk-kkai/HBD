@@ -5,6 +5,7 @@ const REAL_KEY = 'hbd-pati-v1';
 const TEST_KEY = 'hbd-pati-dev-v1';
 const DEV_KEY = 'hbd-dev';
 const DEV_DAY_KEY = 'hbd-dev-day';
+const ACCOUNT_KEY = 'hbd-konto';
 
 function read(key, fallback) {
   try {
@@ -40,11 +41,28 @@ function write(key, value) {
   }
 })();
 export const isDev = () => read(DEV_KEY, false) === true;
-const KEY = isDev() ? TEST_KEY : REAL_KEY;
+
+// Każde konto (hasło) ma osobny zapis w przeglądarce, żeby na jednym telefonie
+// postęp Pati i kont pokazowych się nie mieszał. Konto Pati zostaje pod pierwszym kluczem.
+const keyFor = (account) => (isDev() ? TEST_KEY : !account || account === 'pati' ? REAL_KEY : `${REAL_KEY}:${account}`);
+let account = read(ACCOUNT_KEY, null);
+let KEY = keyFor(account);
 
 const fresh = () => ({ days: {}, items: [], room: { placed: {}, lamp: 0, lampSeen: 1, seen: [], garland: 0, updatedAt: 0 }, updatedAt: 0 });
-let progress = read(KEY, fresh());
-progress.room = { ...fresh().room, ...(progress.room || {}) };
+const load = () => {
+  const p = read(KEY, fresh());
+  p.room = { ...fresh().room, ...(p.room || {}) };
+  return p;
+};
+let progress = load();
+
+export const currentAccount = () => account;
+export function useAccount(next) {
+  account = next;
+  write(ACCOUNT_KEY, next);
+  KEY = keyFor(next);
+  progress = load();
+}
 
 // zapis lokalny + powiadomienie synchronizacji (ustawiane w sync.js)
 let saveHook = null;

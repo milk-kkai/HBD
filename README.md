@@ -24,7 +24,10 @@ skonfigurowaniu także w chmurze, więc działa na każdym urządzeniu i w każd
 3. **Deployments** → przy ostatnim wdrożeniu `⋯` → **Redeploy**.
 
 Od tego momentu przy pierwszym wejściu na nowym urządzeniu pojawia się ekran z hasłem (raz,
-potem jest zapamiętane). Wielkość liter, spacje i polskie znaki w haśle nie mają znaczenia.
+potem jest zapamiętane). Każde hasło to osobne konto: `PATI_PASSWORD` otwiera konto Pati,
+a hasła pokazowe dla znajomych (domyślnie `wyklad1`, `wyklad2`, `chemia`; można je nadpisać
+zmienną `FRIEND_PASSWORDS`, np. `wyklad1,wyklad2,chemia`) mają własne, osobne postępy.
+W karcie postaci jest „wyloguj”, żeby na jednym telefonie przełączać konta. Wielkość liter, spacje i polskie znaki w haśle nie mają znaczenia.
 Bez tej konfiguracji strona działa jak wcześniej, tylko lokalnie. Podpowiedź na ekranie
 logowania: `passwordHint` w `src/config.js`.
 

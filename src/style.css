@@ -1106,6 +1106,16 @@ canvas.world {
   padding: 0 5px;
 }
 
+.link-btn {
+  align-self: center;
+  background: none;
+  border: 0;
+  padding: 0.2em 0.6em;
+  font-size: 0.75em;
+  color: var(--dark);
+  text-decoration: underline;
+}
+
 .login {
   position: absolute;
   inset: 0;
