@@ -76,7 +76,7 @@ function home() {
 
   screen.prepend(roomHost);
   screen.querySelector('.chest-ico').append(spriteCanvas(SPR.chest, pal));
-  screen.querySelector('.mis-ico').append(decorCanvas('mis', pal));
+  screen.querySelector('.mis-ico').append(decorCanvas('tomasz', pal));
   if (chests) screen.querySelector('.chip').classList.add('pulse');
   if (unseen) screen.querySelector('.decor-btn').classList.add('pulse');
   const bottom = screen.querySelector('.bottom');
@@ -230,7 +230,7 @@ function fillTray(bottom) {
         <button class="btn small" data-act="decor-done">GOTOWE</button>
       </div>
       <div class="tray-items">
-        ${ALL_DECOR.map((id) => {
+        ${[...owned, ...ALL_DECOR.filter((id) => !owned.includes(id))].map((id) => {
           const has = owned.includes(id);
           const cls = ['tray-item', has ? '' : 'locked', id === sel ? 'sel' : '', placedIds.includes(id) ? 'placed' : '', unseen.includes(id) ? 'new' : ''].join(' ');
           return `<button class="${cls}" data-item="${id}"><span class="ti-img"></span><span class="ti-name">${has ? ITEMS[id].name : '???'}</span></button>`;

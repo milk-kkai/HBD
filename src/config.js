@@ -10,11 +10,11 @@ export const CONFIG = {
   // Każda skrzynka daje rzeczy z listy `items` (ubrania albo dekoracje do pokoju).
   days: [
     { n: 1, date: '2026-10-23', dow: 'PT', game: 'catch', title: 'Łap tort!', goal: 40, reward: { items: ['kokardka', 'ramka'] } },
-    { n: 2, date: '2026-10-24', dow: 'SB', game: 'kabriolet', title: 'Różowy kabriolet', goal: 30, reward: { items: ['okulary', 'plakat', 'zajaczek'] } },
-    { n: 3, date: '2026-10-25', dow: 'ND', game: 'karne', title: 'Kucykowe karne', reward: { digit: '2', items: ['buty', 'mis'] } },
-    { n: 4, date: '2026-10-26', dow: 'PN', game: 'poker', title: 'Poker', reward: { digit: '9', items: ['zeton', 'lampka'] } },
+    { n: 2, date: '2026-10-24', dow: 'SB', game: 'kabriolet', title: 'Różowy kabriolet', goal: 30, reward: { items: ['okulary', 'switch'] } },
+    { n: 3, date: '2026-10-25', dow: 'ND', game: 'karne', title: 'Kucykowe karne', reward: { digit: '2', items: ['buty', 'tomasz'] } },
+    { n: 4, date: '2026-10-26', dow: 'PN', game: 'poker', title: 'Poker', reward: { digit: '9', items: ['zeton', 'lampka', 'plakat'] } },
     { n: 5, date: '2026-10-27', dow: 'WT', game: 'escape', title: 'Escape room', reward: { digit: '1', items: ['klucz', 'girlanda', 'polaroid'] } },
-    { n: 6, date: '2026-10-28', dow: 'ŚR', game: 'pianino', title: 'Pianino', reward: { digit: '0', items: ['kurtka', 'kwiatek'] } },
+    { n: 6, date: '2026-10-28', dow: 'ŚR', game: 'pianino', title: 'Pianino', reward: { digit: '0', items: ['kurtka', 'kwiatek', 'zajaczek'] } },
     { n: 7, date: '2026-10-29', dow: 'CZ', game: 'finale', title: 'FINAŁ', reward: {} },
   ],
 
@@ -52,6 +52,7 @@ export const CONFIG = {
 // action: co się dzieje po kliknięciu w pokoju (photo = powiększenie, plush = ściśnięcie,
 // lamp = zmiana światła z upgrade'ami, garland = tryb migania).
 // photo: ścieżka do prawdziwego zdjęcia (np. '/photos/my.jpg'), wtedy ramka je pokaże.
+// console = melodyjka i tekst.
 export const ITEMS = {
   kokardka: { name: 'Różowa kokardka', kind: 'ubranie', desc: 'Pasuje do wszystkiego. Szczególnie do urodzin.' },
   okulary: { name: 'Okulary gwiazdy', kind: 'ubranie', desc: '???' },
@@ -74,7 +75,29 @@ export const ITEMS = {
   plakat: { name: 'Plakat', kind: 'dekoracja', fits: ['wall'], action: 'photo', desc: 'Plakat, który wisi u Ciebie' },
   polaroid: { name: 'Polaroid', kind: 'dekoracja', fits: ['wall', 'surface'], action: 'photo', desc: 'Zdjęcie z tamtego wieczoru' },
   zajaczek: { name: 'Pluszowy zajączek', kind: 'dekoracja', fits: ['bed', 'floor', 'surface'], size: { floor: 0.7 }, action: 'plush', desc: 'Miękki i trochę wścibski' },
-  mis: { name: 'Pluszowy miś', kind: 'dekoracja', fits: ['bed', 'floor', 'surface'], size: { floor: 0.8 }, action: 'plush', desc: 'Przytula za nas' },
+  // img + pixel: własna grafika pixel art (rysowana bez wygładzania), aspect = wysokość / szerokość
+  switch: {
+    name: 'Nintendo Switch',
+    kind: 'dekoracja',
+    fits: ['surface', 'bed', 'floor'],
+    size: { floor: 0.6, bed: 0.8 },
+    img: '/art/items/switch.png',
+    pixel: true,
+    aspect: 14 / 28,
+    action: 'console',
+    desc: 'jeszcze jedna runda? 🎮',
+  },
+  tomasz: {
+    name: 'Tomasz Wnęk',
+    kind: 'dekoracja',
+    fits: ['bed', 'floor', 'surface'],
+    size: { floor: 0.8 },
+    img: '/art/items/mis-tomasz.png',
+    pixel: true,
+    aspect: 34 / 32,
+    action: 'plush',
+    desc: 'Tomasz Wnęk 🧸',
+  },
   lampka: { name: 'Lampka', kind: 'dekoracja', fits: ['surface', 'floor'], size: { floor: 0.6 }, action: 'lamp', desc: 'Kliknij, żeby zmienić światło. Każda wygrana = upgrade' },
   girlanda: { name: 'Lampki na karnisz', kind: 'dekoracja', fits: ['garland'], action: 'garland', desc: 'Kliknij, żeby zmienić miganie' },
   kwiatek: { name: 'Kwiatek', kind: 'dekoracja', fits: ['surface', 'floor'], size: { floor: 0.6 }, desc: 'Podlewać raz w tygodniu' },

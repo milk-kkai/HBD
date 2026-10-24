@@ -206,7 +206,7 @@ export function decorCanvas(id, pal) {
       if (!im) return;
       cv.width = im.width;
       cv.height = im.height;
-      cv.classList.add('smooth');
+      if (!item.pixel) cv.classList.add('smooth');
       g.drawImage(im, 0, 0);
     });
     cv.width = 1;

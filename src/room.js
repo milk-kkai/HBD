@@ -261,6 +261,12 @@ export function mountRoom(host, { pal, onPhoto }) {
       d.dataset.mode = m;
       blip(700 + m * 150, 0.05);
       say(['lampki: spokojne', 'lampki: wąż', 'lampki: impreza'][m]);
+    } else if (action === 'console') {
+      d.classList.remove('squish');
+      void d.offsetWidth;
+      d.classList.add('squish');
+      jingle([659, 784, 988, 1319], 0.07);
+      say(ITEMS[id].desc);
     } else if (action === 'photo') onPhoto?.(id);
     else say(ITEMS[id].desc);
   });

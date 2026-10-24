@@ -190,12 +190,12 @@ export function currentDay() {
   return override ?? realDayNumber();
 }
 
-// Dziś: grywalna. Wcześniejsza niewygrana: można nadrobić.
-// Wcześniejsza wygrana: wraca po finale. Przyszła: kłódka.
+// Dziś: grywalna. Każda wcześniejsza gra zostaje otwarta (niewygraną można nadrobić).
+// Przyszła: kłódka do północy jej dnia.
 export function access(n, today = currentDay()) {
   const finaleDone = dayState(CONFIG.days.length).won;
   if (today > CONFIG.days.length || finaleDone) return 'open';
   if (n === today) return 'today';
   if (n > today) return 'locked';
-  return dayState(n).won ? 'done' : 'catchup';
+  return dayState(n).won ? 'open' : 'catchup';
 }
