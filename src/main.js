@@ -8,9 +8,10 @@ import { decorCanvas } from './decor.js';
 import { blip, jingle, isMuted, toggleMute, playMusic } from './audio.js';
 import * as st from './state.js';
 import { mountCatch } from './games/catch.js';
+import { mountKabriolet, CAR } from './games/kabriolet.js';
 import { startSync, login, logout, isLoggedIn } from './sync.js';
 
-const GAMES = { catch: mountCatch };
+const GAMES = { catch: mountCatch, kabriolet: mountKabriolet };
 
 const frame = document.getElementById('frame');
 const BIRTHDAY = zoneMidnight(CONFIG.birthdayDate);
@@ -127,7 +128,7 @@ function fillTodayCard(card, d) {
     </div>
     ${ready && (a === 'today' || a === 'open') ? `<button class="btn play" data-act="play" data-n="${d.n}">▶ GRAJ</button>` : ''}
     ${catchups.length && !(a === 'today' && !ds.won) ? `<button class="btn small catchup" data-act="play" data-n="${catchups[0].n}">nadrób: ${catchups[0].title}</button>` : ''}`;
-  const icon = { catch: SPR.cake, finale: SPR.star }[d.game] || SPR.question;
+  const icon = { catch: SPR.cake, kabriolet: CAR, finale: SPR.star }[d.game] || SPR.question;
   card.querySelector('.tc-icon').append(spriteCanvas(icon, pal));
 }
 

@@ -10,7 +10,7 @@ export const CONFIG = {
   // Każda skrzynka daje rzeczy z listy `items` (ubrania albo dekoracje do pokoju).
   days: [
     { n: 1, date: '2026-10-23', dow: 'PT', game: 'catch', title: 'Łap tort!', goal: 40, reward: { items: ['kokardka', 'ramka'] } },
-    { n: 2, date: '2026-10-24', dow: 'SB', game: 'dreamhouse', title: 'Dreamhouse', reward: { items: ['okulary', 'plakat', 'zajaczek'] } },
+    { n: 2, date: '2026-10-24', dow: 'SB', game: 'kabriolet', title: 'Różowy kabriolet', goal: 30, reward: { items: ['okulary', 'plakat', 'zajaczek'] } },
     { n: 3, date: '2026-10-25', dow: 'ND', game: 'karne', title: 'Kucykowe karne', reward: { digit: '2', items: ['buty', 'mis'] } },
     { n: 4, date: '2026-10-26', dow: 'PN', game: 'poker', title: 'Poker', reward: { digit: '9', items: ['zeton', 'lampka'] } },
     { n: 5, date: '2026-10-27', dow: 'WT', game: 'escape', title: 'Escape room', reward: { digit: '1', items: ['klucz', 'girlanda', 'polaroid'] } },
