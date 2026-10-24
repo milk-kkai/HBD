@@ -1,11 +1,15 @@
-// Dzień 2: różowy kabriolet Barbie. Widok z góry, trzy pasy, mini Pati za kierownicą.
-// Zbiera serduszka (+1) i diamenty (+3), omija pachołki i wolniejsze auta.
+// Dzień 2: Różowe Porsche. Widok z góry, trzy pasy, mini Pati za kierownicą.
+// Zbiera baloniki (+1) i diamenty (+3), serduszko (co 15 punktów) daje dodatkowe życie.
+// Przeszkody stoją na bezpiecznej ścieżce: w każdym rzędzie jest wolny pas, a wolny pas
+// zmienia się najwyżej o jeden między rzędami, więc zawsze da się uciec.
 import { SPR, drawSprite, drawNumber, spriteCanvas } from '../sprites.js';
 import { blip, jingle, playMusic, isMuted, toggleMute } from '../audio.js';
 import { hasItem, dayState, isDev } from '../state.js';
 
 const W = 96;
-const MAX_LIVES = 3;
+const START_LIVES = 3;
+const MAX_LIVES = 5;
+const HEART_EVERY = 15; // jedno serduszko (dodatkowe życie) na tyle punktów
 const ROAD_X0 = 18;
 const ROAD_X1 = 78;
 const LANES = [28, 48, 68]; // środki pasów
@@ -58,6 +62,8 @@ const PALM = S([
 ]);
 const BUSH = S(['.kkkkk.', 'kgpgpgk', 'kpgggpk', 'kgggggk', '.kkkkk.']);
 const BOW = S(['kk.kk', 'kpkpk', '.kpk.']);
+const BALLOON_ROWS = ['..kkk..', '.kpppk.', 'kpWpppk', 'kpWpppk', 'kpppppk', '.kpppk.', '..kpk..', '...k...', '...k...', '..k....', '...k...'];
+const BALLOONS = ['p', 'y', 't', 'v', 'c'].map((c) => S(BALLOON_ROWS.map((r) => r.replace(/p/g, c))));
 
 export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
   root.innerHTML = `
@@ -79,7 +85,7 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     </div>`;
 
   const $ = (q) => root.querySelector(q);
-  $('.ico').append(spriteCanvas(SPR.heart, pal));
+  $('.ico').append(spriteCanvas(BALLOONS[0], pal));
   const scoreEl = $('.score');
   const heartsEl = $('.hearts');
   const goalFill = $('.goal-fill');
@@ -101,8 +107,8 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
 
   function reset() {
     s = {
-      lane: 1, x: LANES[1] - CAR.w / 2, score: 0, lives: MAX_LIVES, things: [], parts: [], pops: [],
-      next: 40, t: 0, shake: 0, won: false, hurt: 0, speed: 46,
+      lane: 1, x: LANES[1] - CAR.w / 2, score: 0, lives: START_LIVES, things: [], parts: [], pops: [],
+      next: 40, t: 0, shake: 0, won: false, hurt: 0, speed: 44, safe: 1, heartAt: HEART_EVERY, heartDue: false,
     };
     renderHud();
   }
@@ -110,7 +116,7 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
   function renderHud() {
     scoreEl.textContent = s.score;
     heartsEl.replaceChildren(
-      ...Array.from({ length: MAX_LIVES }, (_, i) => spriteCanvas(i < s.lives ? SPR.heart : SPR.heartEmpty, pal)),
+      ...Array.from({ length: Math.max(START_LIVES, s.lives) }, (_, i) => spriteCanvas(i < s.lives ? SPR.heart : SPR.heartEmpty, pal)),
     );
     goalFill.style.width = `${Math.min(100, (s.score / day.goal) * 100)}%`;
     goalTxt.textContent = s.score >= day.goal ? 'cel osiągnięty ✓' : `cel: ${s.score}/${day.goal}`;
@@ -146,7 +152,7 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     showOverlay(`
       <div class="panel">
         <div class="panel-title">${day.title.toUpperCase()}</div>
-        <p>Jedziemy na beforek! Zbieraj serduszka i diamenty.<br>Omijaj pachołki i inne auta.</p>
+        <p>Jedziemy na beforek! Zbieraj baloniki i diamenty, serduszko to dodatkowe życie.<br>Omijaj pachołki i inne auta.</p>
         <p class="small">◀ ▶, strzałki albo przesuń palcem w bok</p>
         <button class="btn" data-act="start">START</button>
       </div>`);
@@ -212,29 +218,40 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     blip(420 + lane * 80, 0.03, 'triangle', 0.04);
   }
 
-  // nowy rząd na drodze: co najmniej jeden pas zawsze jest wolny od przeszkód
+  // nowy rząd na drodze. Bezpieczny pas przesuwa się najwyżej o jeden pas na rząd,
+  // a odstęp między rzędami pozwala zmienić pas, więc ucieczka jest zawsze możliwa.
   function spawnRow() {
     const lvl = Math.min(1, s.score / day.goal);
-    const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
-    const obstacles = Math.random() < 0.35 + lvl * 0.35 ? (Math.random() < 0.15 + lvl * 0.35 ? 2 : 1) : 0;
-    for (let i = 0; i < obstacles; i++) {
-      const lane = lanes[i];
+    const prevSafe = s.safe;
+    s.safe = Math.max(0, Math.min(2, prevSafe + Math.floor(Math.random() * 3) - 1));
+    // przy zmianie pasa oba pasy (stary i nowy) zostają wolne w tym rzędzie
+    const keepFree = new Set([s.safe, prevSafe]);
+    const blockable = [0, 1, 2].filter((l) => !keepFree.has(l));
+    const want = Math.random() < 0.3 + lvl * 0.35 ? (Math.random() < 0.2 + lvl * 0.3 ? 2 : 1) : 0;
+    const lanes = blockable.sort(() => Math.random() - 0.5).slice(0, want);
+    for (const lane of lanes) {
       const isCar = Math.random() < 0.4;
       const spr = isCar ? OTHER_CARS[Math.floor(Math.random() * OTHER_CARS.length)] : CONE;
-      s.things.push({ kind: isCar ? 'car' : 'cone', spr, x: LANES[lane] - spr.w / 2, y: -spr.h, vy: isCar ? 0.45 : 1 });
+      s.things.push({ kind: isCar ? 'car' : 'cone', spr, x: LANES[lane] - spr.w / 2, y: -spr.h });
     }
-    const free = lanes.slice(obstacles);
-    if (free.length && Math.random() < 0.85) {
+    // nagrody tylko na wolnych pasach; serduszko zawsze na bezpiecznym
+    if (s.heartDue) {
+      s.heartDue = false;
+      s.things.push({ kind: 'heart', spr: SPR.heart, x: LANES[s.safe] - SPR.heart.w / 2, y: -SPR.heart.h - 4 });
+      return;
+    }
+    const free = [0, 1, 2].filter((l) => !lanes.includes(l));
+    if (Math.random() < 0.85) {
       const lane = free[Math.floor(Math.random() * free.length)];
-      const diamond = Math.random() < 0.12;
-      const spr = diamond ? DIAMOND : SPR.heart;
-      s.things.push({ kind: diamond ? 'diamond' : 'heart', spr, x: LANES[lane] - spr.w / 2, y: -spr.h - 4, vy: 1 });
+      const diamond = Math.random() < 0.1;
+      const spr = diamond ? DIAMOND : BALLOONS[Math.floor(Math.random() * BALLOONS.length)];
+      s.things.push({ kind: diamond ? 'diamond' : 'balloon', spr, x: LANES[lane] - spr.w / 2, y: -spr.h - 4 });
     }
   }
 
   function update(dt) {
     s.t += dt;
-    s.speed = 46 + Math.min(64, s.score * 1.9) + s.t * 0.25;
+    s.speed = 44 + Math.min(46, s.score * 1.3) + Math.min(10, s.t * 0.15);
     const move = s.speed * dt;
     scroll = (scroll + move) % 1000;
     // samochód płynnie przesuwa się na wybrany pas
@@ -244,13 +261,14 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     s.next -= move;
     if (s.next <= 0) {
       spawnRow();
-      s.next = Math.max(26, 46 - s.score * 0.5) + Math.random() * 14;
+      // odstęp: auto (19 px) musi się zmieścić między rzędami, żeby zdążyć zmienić pas
+      s.next = Math.max(46, 60 - s.score * 0.4) + Math.random() * 12;
     }
 
     const cy = H - CAR.h - 8;
     const car = { x: s.x + 2, y: cy + 2, w: CAR.w - 4, h: CAR.h - 4 };
     for (const it of s.things) {
-      it.y += move * it.vy;
+      it.y += move;
       if (it.done) continue;
       const hit = it.x < car.x + car.w && it.x + it.spr.w > car.x && it.y < car.y + car.h && it.y + it.spr.h > car.y;
       if (hit) collide(it);
@@ -294,8 +312,20 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
       return;
     }
     it.done = true;
+    if (it.kind === 'heart') {
+      s.lives = Math.min(MAX_LIVES, s.lives + 1);
+      s.pops.push({ x: cx - 4, y: it.y - 4, txt: '+1', life: 0.7 });
+      jingle([784, 988, 1175], 0.06);
+      burst(cx, cy, [pal.pink, pal.white]);
+      renderHud();
+      return;
+    }
     const pts = it.kind === 'diamond' ? 3 : 1;
     s.score += pts;
+    if (s.score >= s.heartAt) {
+      s.heartAt += HEART_EVERY;
+      s.heartDue = true;
+    }
     s.pops.push({ x: cx - 4, y: it.y - 4, txt: `+${pts}`, life: 0.7 });
     blip(it.kind === 'diamond' ? 990 : 660 + Math.min(400, s.score * 8), 0.07, 'square', 0.05);
     burst(cx, cy, it.kind === 'diamond' ? [pal.sky, pal.white, pal.teal] : [pal.pink, pal.white, pal.gold]);
@@ -437,7 +467,7 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     } else if (e.key === 'Escape') pause();
     else if (isDev() && (e.key === 'p' || e.key === 'P') && mode === 'play') {
       // tryb testowy: +5 punktów
-      for (let i = 0; i < 5; i++) collide({ kind: 'heart', spr: SPR.heart, x: s.x, y: H - 40 });
+      for (let i = 0; i < 5; i++) collide({ kind: 'balloon', spr: BALLOONS[0], x: s.x, y: H - 40 });
     } else return;
     e.preventDefault();
   };
