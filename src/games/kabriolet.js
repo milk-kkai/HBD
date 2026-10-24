@@ -1,14 +1,14 @@
 // Dzień 2: Różowe Porsche. Widok z góry, trzy pasy, mini Pati za kierownicą.
-// Zbiera baloniki (+1) i diamenty (+3), serduszko (co 15 punktów) daje dodatkowe życie.
-// Przeszkody stoją na bezpiecznej ścieżce: w każdym rzędzie jest wolny pas, a wolny pas
-// zmienia się najwyżej o jeden między rzędami, więc zawsze da się uciec.
+// Zbiera baloniki (+1) i diamenty (+3); serduszko (co 15 punktów) oddaje stracone życie (max 3).
+// Inne auta jadą wolniej od nas, więc układ na drodze ciągle się zmienia. Każda nowa przeszkoda
+// jest sprawdzana symulacją kilka sekund do przodu: jeśli z pasa Porsche nie dałoby się
+// przecisnąć żadną luką (z czasem na zmianę pasa), przeszkoda tam się nie pojawi.
 import { SPR, drawSprite, drawNumber, spriteCanvas } from '../sprites.js';
 import { blip, jingle, playMusic, isMuted, toggleMute } from '../audio.js';
 import { hasItem, dayState, isDev } from '../state.js';
 
 const W = 96;
-const START_LIVES = 3;
-const MAX_LIVES = 5;
+const MAX_LIVES = 3;
 const HEART_EVERY = 15; // jedno serduszko (dodatkowe życie) na tyle punktów
 const ROAD_X0 = 18;
 const ROAD_X1 = 78;
@@ -107,8 +107,8 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
 
   function reset() {
     s = {
-      lane: 1, x: LANES[1] - CAR.w / 2, score: 0, lives: START_LIVES, things: [], parts: [], pops: [],
-      next: 40, t: 0, shake: 0, won: false, hurt: 0, speed: 44, safe: 1, heartAt: HEART_EVERY, heartDue: false,
+      lane: 1, x: LANES[1] - CAR.w / 2, score: 0, lives: MAX_LIVES, obs: [], picks: [], parts: [], pops: [],
+      obsT: 1.2, pickT: 0.6, t: 0, shake: 0, won: false, hurt: 0, speed: 48, heartAt: HEART_EVERY, heartDue: false,
     };
     renderHud();
   }
@@ -116,7 +116,7 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
   function renderHud() {
     scoreEl.textContent = s.score;
     heartsEl.replaceChildren(
-      ...Array.from({ length: Math.max(START_LIVES, s.lives) }, (_, i) => spriteCanvas(i < s.lives ? SPR.heart : SPR.heartEmpty, pal)),
+      ...Array.from({ length: MAX_LIVES }, (_, i) => spriteCanvas(i < s.lives ? SPR.heart : SPR.heartEmpty, pal)),
     );
     goalFill.style.width = `${Math.min(100, (s.score / day.goal) * 100)}%`;
     goalTxt.textContent = s.score >= day.goal ? 'cel osiągnięty ✓' : `cel: ${s.score}/${day.goal}`;
@@ -218,62 +218,122 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     blip(420 + lane * 80, 0.03, 'triangle', 0.04);
   }
 
-  // nowy rząd na drodze. Bezpieczny pas przesuwa się najwyżej o jeden pas na rząd,
-  // a odstęp między rzędami pozwala zmienić pas, więc ucieczka jest zawsze możliwa.
-  function spawnRow() {
-    const lvl = Math.min(1, s.score / day.goal);
-    const prevSafe = s.safe;
-    s.safe = Math.max(0, Math.min(2, prevSafe + Math.floor(Math.random() * 3) - 1));
-    // przy zmianie pasa oba pasy (stary i nowy) zostają wolne w tym rzędzie
-    const keepFree = new Set([s.safe, prevSafe]);
-    const blockable = [0, 1, 2].filter((l) => !keepFree.has(l));
-    const want = Math.random() < 0.3 + lvl * 0.35 ? (Math.random() < 0.2 + lvl * 0.3 ? 2 : 1) : 0;
-    const lanes = blockable.sort(() => Math.random() - 0.5).slice(0, want);
-    for (const lane of lanes) {
-      const isCar = Math.random() < 0.4;
-      const spr = isCar ? OTHER_CARS[Math.floor(Math.random() * OTHER_CARS.length)] : CONE;
-      s.things.push({ kind: isCar ? 'car' : 'cone', spr, x: LANES[lane] - spr.w / 2, y: -spr.h });
+  const carY = () => H - CAR.h - 8;
+
+  // Czy z pasa `fromLane` da się przejechać przez przeszkody `obs` w najbliższych sekundach?
+  // Czas dzielimy na odcinki 0,2 s (tyle trwa zmiana pasa). W każdym odcinku pas jest wolny,
+  // jeśli żadna przeszkoda nie zachodzi na wysokość Porsche. Do sąsiedniego pasa można przejść,
+  // gdy jest wolny w tym i w następnym odcinku.
+  function escapable(obs, fromLane) {
+    const STEP = 0.2;
+    const top = carY() - 3;
+    const bot = carY() + CAR.h + 3;
+    let horizon = 0;
+    for (const o of obs) horizon = Math.max(horizon, (bot - o.y) / (s.speed * o.k));
+    const steps = Math.ceil(Math.min(6, horizon) / STEP) + 1;
+    const freeAt = (k) => {
+      const f = [true, true, true];
+      for (const o of obs) {
+        const v = s.speed * o.k;
+        const y0 = o.y + v * k * STEP;
+        const y1 = o.y + v * (k + 1) * STEP;
+        if (y1 + o.spr.h > top && y0 < bot) f[o.lane] = false;
+      }
+      return f;
+    };
+    let free = freeAt(0);
+    if (!free[fromLane]) return true; // już na kursie kolizyjnym, tego nie oceniamy
+    let reach = new Set([fromLane]);
+    for (let k = 0; k < steps; k++) {
+      const next = freeAt(k + 1);
+      const cand = new Set(reach);
+      for (const l of reach) for (const n of [l - 1, l + 1]) if (n >= 0 && n < 3 && free[n]) cand.add(n);
+      reach = new Set([...cand].filter((l) => next[l]));
+      if (!reach.size) return false;
+      free = next;
     }
-    // nagrody tylko na wolnych pasach; serduszko zawsze na bezpiecznym
+    return true;
+  }
+
+  // nowa przeszkoda nie może dogonić innej na tym samym pasie, zanim tamta zjedzie z ekranu
+  function laneClash(o) {
+    for (const e of s.obs) {
+      if (e.lane !== o.lane) continue;
+      if (o.y + o.spr.h + 8 > e.y) return true;
+      const dv = s.speed * (o.k - e.k);
+      if (dv > 0) {
+        const tCatch = (e.y - (o.y + o.spr.h + 4)) / dv;
+        const tExit = (H + 30 - e.y) / (s.speed * e.k);
+        if (tCatch < tExit) return true;
+      }
+    }
+    return false;
+  }
+
+  function trySpawnObstacle() {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const lane = Math.floor(Math.random() * 3);
+      const isCar = Math.random() < 0.55;
+      const spr = isCar ? OTHER_CARS[Math.floor(Math.random() * OTHER_CARS.length)] : CONE;
+      // auta jadą w naszą stronę wolniej niż droga (k < 1), pachołki stoją (k = 1)
+      const k = isCar ? 0.4 + Math.random() * 0.3 : 1;
+      const o = { kind: isCar ? 'car' : 'cone', spr, lane, k, x: LANES[lane] - spr.w / 2, y: -spr.h - 2 };
+      if (!laneClash(o) && escapable([...s.obs, o], s.lane)) {
+        s.obs.push(o);
+        return;
+      }
+    }
+  }
+
+  function spawnPickup() {
+    const lanes = [0, 1, 2].filter((l) => !s.obs.some((o) => o.lane === l && o.y < 26));
+    if (!lanes.length) return;
+    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+    let kind = 'balloon';
+    let spr = BALLOONS[Math.floor(Math.random() * BALLOONS.length)];
     if (s.heartDue) {
       s.heartDue = false;
-      s.things.push({ kind: 'heart', spr: SPR.heart, x: LANES[s.safe] - SPR.heart.w / 2, y: -SPR.heart.h - 4 });
-      return;
+      kind = 'heart';
+      spr = SPR.heart;
+    } else if (Math.random() < 0.08) {
+      kind = 'diamond';
+      spr = DIAMOND;
     }
-    const free = [0, 1, 2].filter((l) => !lanes.includes(l));
-    if (Math.random() < 0.85) {
-      const lane = free[Math.floor(Math.random() * free.length)];
-      const diamond = Math.random() < 0.1;
-      const spr = diamond ? DIAMOND : BALLOONS[Math.floor(Math.random() * BALLOONS.length)];
-      s.things.push({ kind: diamond ? 'diamond' : 'balloon', spr, x: LANES[lane] - spr.w / 2, y: -spr.h - 4 });
-    }
+    s.picks.push({ kind, spr, lane, k: 1, x: LANES[lane] - spr.w / 2, y: -spr.h - 2 });
   }
 
   function update(dt) {
     s.t += dt;
-    s.speed = 44 + Math.min(46, s.score * 1.3) + Math.min(10, s.t * 0.15);
+    const lvl = Math.min(1, s.score / day.goal);
+    s.speed = 48 + Math.min(40, s.score * 1.0) + Math.min(8, s.t * 0.1);
     const move = s.speed * dt;
     scroll = (scroll + move) % 1000;
     // samochód płynnie przesuwa się na wybrany pas
     const tx = LANES[s.lane] - CAR.w / 2;
     s.x += (tx - s.x) * Math.min(1, dt * 14);
 
-    s.next -= move;
-    if (s.next <= 0) {
-      spawnRow();
-      // odstęp: auto (19 px) musi się zmieścić między rzędami, żeby zdążyć zmienić pas
-      s.next = Math.max(46, 60 - s.score * 0.4) + Math.random() * 12;
+    s.obsT -= dt;
+    if (s.obsT <= 0) {
+      trySpawnObstacle();
+      s.obsT = Math.max(0.3, 0.72 - lvl * 0.36) * (0.8 + Math.random() * 0.4);
     }
+    s.pickT -= dt;
+    if (s.pickT <= 0) {
+      spawnPickup();
+      s.pickT = 0.5 + Math.random() * 0.35;
+    }
+    for (const it of s.obs) it.y += s.speed * it.k * dt;
+    for (const it of s.picks) it.y += move;
 
     const cy = H - CAR.h - 8;
     const car = { x: s.x + 2, y: cy + 2, w: CAR.w - 4, h: CAR.h - 4 };
-    for (const it of s.things) {
-      it.y += move;
+    for (const it of [...s.picks, ...s.obs]) {
       if (it.done) continue;
       const hit = it.x < car.x + car.w && it.x + it.spr.w > car.x && it.y < car.y + car.h && it.y + it.spr.h > car.y;
       if (hit) collide(it);
     }
-    s.things = s.things.filter((it) => !it.done && it.y < H + 30);
+    s.obs = s.obs.filter((it) => !it.done && it.y < H + 30);
+    s.picks = s.picks.filter((it) => !it.done && it.y < H + 30);
 
     for (const d of deco) d.y += move;
     for (let i = deco.length - 1; i >= 0; i--) if (deco[i].y > H + 20) deco.splice(i, 1);
@@ -312,8 +372,9 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
       return;
     }
     it.done = true;
-    if (it.kind === 'heart') {
-      s.lives = Math.min(MAX_LIVES, s.lives + 1);
+    // serduszko oddaje stracone życie (max 3), przy pełnych życiach liczy się jak balonik
+    if (it.kind === 'heart' && s.lives < MAX_LIVES) {
+      s.lives += 1;
       s.pops.push({ x: cx - 4, y: it.y - 4, txt: '+1', life: 0.7 });
       jingle([784, 988, 1175], 0.06);
       burst(cx, cy, [pal.pink, pal.white]);
@@ -377,7 +438,8 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
     if (s.shake > 0) g.translate(Math.round((Math.random() - 0.5) * 4), Math.round((Math.random() - 0.5) * 3));
     drawRoad();
     for (const d of deco) drawSprite(g, d.spr, d.x, d.y, pal);
-    for (const it of s.things) drawSprite(g, it.spr, it.x, it.y, pal);
+    for (const it of s.picks) drawSprite(g, it.spr, it.x, it.y, pal);
+    for (const it of s.obs) drawSprite(g, it.spr, it.x, it.y, pal);
     const cy = H - CAR.h - 8;
     if (!(s.hurt > 0 && Math.floor(s.hurt * 12) % 2)) {
       const wob = mode === 'play' ? Math.round(Math.sin(s.t * 20) * 0.4) : 0;
@@ -478,6 +540,8 @@ export function mountKabriolet(root, { day, pal, onExit, onWin, onScore }) {
   reset();
   intro();
   raf = requestAnimationFrame(loop);
+  // tryb testowy: podgląd stanu dla automatycznych testów
+  if (isDev()) window.__porsche = { state: () => s, escapable, steer, start };
 
   return () => {
     cancelAnimationFrame(raf);
